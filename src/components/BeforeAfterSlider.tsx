@@ -242,7 +242,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
           className="relative w-full rounded-xl overflow-hidden border border-white/15 bg-[#09090B] select-none cursor-ew-resize"
         >
           <div
-            className="relative w-full transition-transform duration-150 origin-center"
+            className="relative w-full aspect-[16/10] max-h-[580px] transition-transform duration-150 origin-center"
             style={{ transform: `scale(${zoom})` }}
           >
             {/* Base Layer: AFTER (Result) */}
@@ -250,7 +250,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
               src={viewMode === 'beforeOnly' ? beforeUrl : afterUrl}
               alt={afterLabelAr}
               referrerPolicy="no-referrer"
-              className="w-full max-h-[580px] object-contain mx-auto block"
+              className="absolute inset-0 w-full h-full object-cover block"
               draggable={false}
             />
 
@@ -264,7 +264,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
                   src={beforeUrl}
                   alt={beforeLabelAr}
                   referrerPolicy="no-referrer"
-                  className="w-full max-h-[580px] object-contain mx-auto block"
+                  className="absolute inset-0 w-full h-full object-cover block"
                   draggable={false}
                 />
               </div>

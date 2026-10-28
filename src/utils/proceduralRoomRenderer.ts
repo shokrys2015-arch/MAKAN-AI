@@ -51,18 +51,17 @@ const ROOM_TYPE_DEFAULT_IMAGE_MAP: Partial<Record<RoomTypeId, string>> = {
   office: '/images/room_office_exec.jpg',
 };
 
-/**
- * Returns a real, high-resolution architectural photograph URL for any room state or style.
- * Completely replaces the old 2D canvas drawing so the user never sees cartoon graphics.
- */
 export function renderProceduralRoomToDataUrl(params: ProceduralRoomSceneParams): string {
   const state = params.state || 'designed';
 
   if (state === 'unfinished_brick') {
-    return '/images/before_unfinished.jpg';
+    return '/images/hero_before.jpg';
   }
   if (state === 'semi_plaster') {
-    return '/images/before_semi_plaster.jpg';
+    if (params.roomType === 'master_bedroom' || params.roomType === 'kids_room') {
+      return '/images/before_bedroom.jpg';
+    }
+    return '/images/hero_before.jpg';
   }
   if (state === 'old_room') {
     return '/images/before_old_room.jpg';
@@ -116,25 +115,25 @@ export interface SampleRoomPreset {
 
 export const SAMPLE_STARTING_ROOMS: SampleRoomPreset[] = [
   {
-    id: 'sample_plaster',
-    nameAr: 'شقة نصف تشطيب (محارة وحلوق)',
-    subtitleAr: 'نموذج واقعي لشقة مصرية على المحارة لتجربة ألوان الدهانات والبانوهات والرخام والجبس بورد',
+    id: 'sample_living',
+    nameAr: 'نموذج ريسبشن ومعيشة (مقارنة بنفس الزاوية)',
+    subtitleAr: 'جرب تغيير ألوان الدهانات والأرضيات والإضاءة على نفس زاوية الغرفة',
     roomType: 'living_room',
     state: 'semi_plaster',
-    imageUrl: '/images/before_semi_plaster.jpg',
+    imageUrl: '/images/hero_before.jpg',
   },
   {
-    id: 'sample_brick',
-    nameAr: 'غرفة تحت الإنشاء (تأسيس وتشطيب)',
-    subtitleAr: 'مثالية لتجربة التشطيب المتكامل من الصفر ورؤية النتيجة النهائية ومقايسة التكلفة',
-    roomType: 'living_room',
-    state: 'unfinished_brick',
-    imageUrl: '/images/before_unfinished.jpg',
+    id: 'sample_bedroom',
+    nameAr: 'نموذج غرفة نوم رئيسية (ماستر)',
+    subtitleAr: 'جرب أنماط النيو كلاسيك والبانوهات والباركيه والإضاءة الدافئة',
+    roomType: 'master_bedroom',
+    state: 'semi_plaster',
+    imageUrl: '/images/before_bedroom.jpg',
   },
   {
     id: 'sample_old',
-    nameAr: 'غرفة قائمة تحتاج إلى تجديد',
-    subtitleAr: 'مفروشة حالياً لتجربة تغيير لون الحائط فقط أو الأرضية فقط أو تحديث الإضاءة',
+    nameAr: 'نموذج غرفة قائمة للتجديد',
+    subtitleAr: 'مفروشة حالياً لتجربة تغيير لون الحائط أو الأرضية أو تحديث الإضاءة',
     roomType: 'living_room',
     state: 'old_room',
     imageUrl: '/images/before_old_room.jpg',

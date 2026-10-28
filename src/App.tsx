@@ -32,7 +32,7 @@ import { ProjectsDashboardView } from './components/ProjectsDashboardView';
 
 type MainTab = 'home' | 'studio' | 'gallery' | 'boq' | 'projects';
 
-const STORAGE_PROJECTS_KEY = 'makan_ai_projects_v3';
+const STORAGE_PROJECTS_KEY = 'makan_ai_projects_v4';
 const STORAGE_PRICES_KEY = 'makan_ai_prices_v1';
 
 function createDefaultRoomUnit(
@@ -169,18 +169,17 @@ function createDefaultRoomUnit(
 }
 
 function createInitialProjects(): MakanProject[] {
-  const room1 = createDefaultRoomUnit('room_reception_1', 'الريسبشن والمعيشة', 'living_room', 'semi_plaster');
-  const room2 = createDefaultRoomUnit('room_master_2', 'غرفة النوم الرئيسية (ماستر)', 'master_bedroom', 'unfinished_brick');
+  const room1 = createDefaultRoomUnit('room_main_1', 'المساحة الحالية', 'living_room', 'semi_plaster');
 
   return [
     {
-      id: 'proj_default_apartment',
-      nameAr: 'مشروع شقة سكنية — التجمع الخامس',
-      isFullApartment: true,
+      id: 'proj_default_main',
+      nameAr: 'تصميم مساحتي',
+      isFullApartment: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      region: 'new_cairo_capital',
-      rooms: [room1, room2],
+      region: 'greater_cairo',
+      rooms: [room1],
       activeRoomId: room1.id,
       sharedApartmentCosts: {
         mainElectricalPanelEgp: 14500,

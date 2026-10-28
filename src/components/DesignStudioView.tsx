@@ -253,43 +253,113 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
   );
 
   return (
-    <div className="space-y-6">
-      {/* Apartment Rooms Strip (allows multi-room management for Full Apartment projects) */}
-      <div className="bg-[#141418] border border-white/10 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-[#A6A29A] ml-2 flex items-center gap-1.5">
-            <Building2 className="w-4 h-4 text-[#C6A355]" />
-            <span>غرف المشروع ({project.nameAr}):</span>
-          </span>
-          {project.rooms.map((rm) => (
-            <button
-              key={rm.id}
-              type="button"
-              onClick={() => onSelectRoom(rm.id)}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
-                rm.id === activeRoom.id
-                  ? 'bg-[#C6A355] text-[#0B0B0E]'
-                  : 'bg-[#0B0B0E] text-[#EAE4DA] hover:bg-white/5 border border-white/10'
-              }`}
-            >
-              {rm.nameAr}
-              {rm.versions.length > 0 && (
-                <span className="mr-1.5 font-mono text-[10px] opacity-80">
-                  ({rm.versions.length})
-                </span>
-              )}
-            </button>
-          ))}
+    <div className="space-y-5">
+      {/* Unified Compact Top Studio Bar */}
+      <div className="bg-[#141418] border border-white/10 rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-3">
+        {/* Right side: 3 Clear Steps */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setStudioStep(1)}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-2 ${
+              studioStep === 1
+                ? 'bg-[#C6A355] text-[#0B0B0E]'
+                : 'bg-[#0B0B0E] text-[#A6A29A] hover:text-white border border-white/5'
+            }`}
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span>1. صورة المكان</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStudioStep(2)}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-2 ${
+              studioStep === 2
+                ? 'bg-[#C6A355] text-[#0B0B0E]'
+                : 'bg-[#0B0B0E] text-[#A6A29A] hover:text-white border border-white/5'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>2. الألوان والخامات</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStudioStep(3)}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-2 ${
+              studioStep === 3
+                ? 'bg-[#C6A355] text-[#0B0B0E]'
+                : 'bg-[#0B0B0E] text-[#A6A29A] hover:text-white border border-white/5'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>3. النتيجة والمقارنة</span>
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setNewRoomModalOpen(!newRoomModalOpen)}
-          className="px-3 py-1.5 bg-[#0B0B0E] hover:bg-white/5 text-[#C6A355] border border-[#C6A355]/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap shrink-0"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>إضافة غرفة أخرى للشقة</span>
-        </button>
+        {/* Left side: Context actions or Multi-room pills (only if user added rooms) */}
+        <div className="flex flex-wrap items-center gap-2">
+          {project.rooms.length > 1 && (
+            <div className="flex items-center gap-1.5 pl-2 border-l border-white/10">
+              {project.rooms.map((rm) => (
+                <button
+                  key={rm.id}
+                  type="button"
+                  onClick={() => onSelectRoom(rm.id)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+                    rm.id === activeRoom.id
+                      ? 'bg-white/15 text-[#C6A355] border border-[#C6A355]/50'
+                      : 'bg-[#0B0B0E] text-[#A6A29A] hover:text-white border border-white/10'
+                  }`}
+                >
+                  {rm.nameAr}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {studioStep === 3 ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setStudioStep(2)}
+                className="px-3 py-1.5 bg-[#0B0B0E] hover:bg-white/5 text-[#EAE4DA] border border-white/15 rounded-lg text-xs font-semibold flex items-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-[#C6A355]" />
+                <span>تعديل الاختيارات</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isGenerating}
+                onClick={() => onGenerateDesign(true)}
+                className="px-3 py-1.5 bg-[#0B0B0E] hover:bg-white/5 text-[#C6A355] border border-[#C6A355]/40 rounded-lg text-xs font-semibold flex items-center gap-1.5"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>3 بدائل</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onOpenBOQForSelectedDesign}
+                className="px-3.5 py-1.5 bg-[#C6A355] hover:bg-[#d4b265] text-[#0B0B0E] font-bold text-xs rounded-lg flex items-center gap-1.5"
+              >
+                <Calculator className="w-3.5 h-3.5" />
+                <span>حساب التكلفة</span>
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setNewRoomModalOpen(!newRoomModalOpen)}
+              className="px-3 py-1.5 bg-[#0B0B0E] hover:bg-white/5 text-[#A6A29A] hover:text-[#C6A355] border border-white/10 rounded-lg text-xs font-medium flex items-center gap-1.5 whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5 text-[#C6A355]" />
+              <span>إضافة غرفة أخرى</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Add Room Inline Modal */}
@@ -299,7 +369,7 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
             <label className="block text-xs text-[#A6A29A] mb-1">اسم الغرفة الجديدة</label>
             <input
               type="text"
-              placeholder="مثال: غرفة النوم الرئيسية / المطبخ / غرفة الأطفال..."
+              placeholder="مثال: غرفة النوم / المطبخ / المكتب..."
               value={newRoomName}
               onChange={(e) => setNewRoomName(e.target.value)}
               className="w-full bg-[#0B0B0E] border border-white/15 rounded-lg px-3 py-2 text-xs text-[#F5F2EB]"
@@ -333,7 +403,7 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
               }}
               className="px-4 py-2 bg-[#C6A355] text-[#0B0B0E] font-bold text-xs rounded-lg"
             >
-              إضافة الغرفة للمشروع
+              إضافة الغرفة
             </button>
             <button
               type="button"
@@ -345,57 +415,6 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
           </div>
         </div>
       )}
-
-      {/* Progressive Stepper Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <button
-          type="button"
-          onClick={() => setStudioStep(1)}
-          className={`p-3.5 rounded-xl border text-right transition-colors flex items-center justify-between ${
-            studioStep === 1
-              ? 'bg-[#141418] border-[#C6A355] text-[#F5F2EB]'
-              : 'bg-[#141418]/60 border-white/10 text-[#A6A29A] hover:text-white'
-          }`}
-        >
-          <div>
-            <div className="text-[11px] text-[#C6A355] font-semibold">الخطوة 01</div>
-            <div className="text-sm font-bold mt-0.5">رفع صورة المكان واختيار المسار</div>
-          </div>
-          <Upload className="w-5 h-5 text-[#C6A355]" />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setStudioStep(2)}
-          className={`p-3.5 rounded-xl border text-right transition-colors flex items-center justify-between ${
-            studioStep === 2
-              ? 'bg-[#141418] border-[#C6A355] text-[#F5F2EB]'
-              : 'bg-[#141418]/60 border-white/10 text-[#A6A29A] hover:text-white'
-          }`}
-        >
-          <div>
-            <div className="text-[11px] text-[#C6A355] font-semibold">الخطوة 02</div>
-            <div className="text-sm font-bold mt-0.5">اختيار الأنماط والألوان والخامات المرئية</div>
-          </div>
-          <Layers className="w-5 h-5 text-[#C6A355]" />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setStudioStep(3)}
-          className={`p-3.5 rounded-xl border text-right transition-colors flex items-center justify-between ${
-            studioStep === 3
-              ? 'bg-[#141418] border-[#C6A355] text-[#F5F2EB]'
-              : 'bg-[#141418]/60 border-white/10 text-[#A6A29A] hover:text-white'
-          }`}
-        >
-          <div>
-            <div className="text-[11px] text-[#C6A355] font-semibold">الخطوة 03</div>
-            <div className="text-sm font-bold mt-0.5">معاينة التصميم (قبل وبعد) والبدائل والتكلفة</div>
-          </div>
-          <Sparkles className="w-5 h-5 text-[#C6A355]" />
-        </button>
-      </div>
 
       {/* ==================== STEP 1: PHOTO UPLOAD, ROOM TYPE, DESIGN PATH ==================== */}
       {studioStep === 1 && (
@@ -1447,49 +1466,7 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
 
       {/* ==================== STEP 3: BEFORE/AFTER RESULT, 3 ALTERNATIVES, SMART ANALYSIS & 2D PLAN ==================== */}
       {studioStep === 3 && (
-        <div className="space-y-6">
-          {/* Action header bar */}
-          <div className="bg-[#141418] border border-white/10 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="text-base font-bold text-[#F5F2EB]">
-                معاينة النتيجة ومقارنة قبل وبعد — {activeRoom.nameAr}
-              </h3>
-              <p className="text-xs text-[#A6A29A]">
-                اسحب الفاصل لمقارنة الصورة الأصلية بالتصميم الجديد، أو قارن بين البدائل، أو انتقل لحساب كميات وتكلفة التشطيب لهذا التصميم.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setStudioStep(2)}
-                className="px-3.5 py-2 bg-[#0B0B0E] hover:bg-white/5 text-[#EAE4DA] border border-white/15 rounded-lg text-xs font-semibold flex items-center gap-1.5"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-[#C6A355]" />
-                <span>تعديل الاختيارات</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={isGenerating}
-                onClick={() => onGenerateDesign(true)}
-                className="px-3.5 py-2 bg-[#0B0B0E] hover:bg-white/5 text-[#C6A355] border border-[#C6A355]/40 rounded-lg text-xs font-semibold flex items-center gap-1.5"
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>توليد 3 بدائل أخرى</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={onOpenBOQForSelectedDesign}
-                className="px-4 py-2 bg-[#C6A355] hover:bg-[#d4b265] text-[#0B0B0E] font-bold text-xs rounded-lg flex items-center gap-1.5"
-              >
-                <Calculator className="w-4 h-4" />
-                <span>احسب كميات وتكلفة هذا التصميم</span>
-              </button>
-            </div>
-          </div>
-
+        <div className="space-y-5">
           {/* Interactive Before / After Comparison Viewer */}
           {activeVersion ? (
             <BeforeAfterSlider

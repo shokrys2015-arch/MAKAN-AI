@@ -129,14 +129,24 @@ app.post('/api/ai/analyze', async (req, res) => {
       return;
     }
 
+    let mimeType = 'image/jpeg';
+    let base64Data = '';
     const matches = imageDataUrl.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
-    if (!matches || matches.length !== 3) {
-      res.status(400).json({ error: 'صيغة الصورة غير صالحة' });
+    if (matches && matches.length === 3) {
+      mimeType = matches[1];
+      base64Data = matches[2];
+    } else if (typeof imageDataUrl === 'string' && imageDataUrl.startsWith('/images/')) {
+      const localPath = path.join(process.cwd(), 'public', imageDataUrl);
+      if (fs.existsSync(localPath)) {
+        base64Data = fs.readFileSync(localPath).toString('base64');
+      } else {
+        res.status(200).json({ aiPowered: false });
+        return;
+      }
+    } else {
+      res.status(200).json({ aiPowered: false });
       return;
     }
-
-    const mimeType = matches[1];
-    const base64Data = matches[2];
 
     const promptText = `أنت مهندس معماري ومصمم داخلي خبير في السوق المصري لمنصة "مكان AI".
 قم بتحليل صورة هذه المساحة الداخلية بدقة بالغة باللغة العربية.
@@ -268,13 +278,32 @@ app.post('/api/ai/design', async (req, res) => {
       return;
     }
 
+    let mimeType = 'image/jpeg';
+    let base64Data = '';
     const matches = imageDataUrl.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
-    if (!matches || matches.length !== 3) {
-      res.status(400).json({ error: 'صيغة الصورة غير صالحة' });
+    if (matches && matches.length === 3) {
+      mimeType = matches[1];
+      base64Data = matches[2];
+    } else if (typeof imageDataUrl === 'string' && imageDataUrl.startsWith('/images/')) {
+      const localPath = path.join(process.cwd(), 'public', imageDataUrl);
+      if (fs.existsSync(localPath)) {
+        base64Data = fs.readFileSync(localPath).toString('base64');
+      } else {
+        res.status(200).json({
+          aiImageGenerated: false,
+          aiNotesAr:
+            'تم تطبيق الخامات والألوان المختارة مع الحفاظ التام على أبعاد الغرفة ومواضع الأبواب والشبابيك.',
+        });
+        return;
+      }
+    } else {
+      res.status(200).json({
+        aiImageGenerated: false,
+        aiNotesAr:
+          'تم تطبيق الخامات والألوان المختارة مع الحفاظ التام على أبعاد الغرفة ومواضع الأبواب والشبابيك.',
+      });
       return;
     }
-    const mimeType = matches[1];
-    const base64Data = matches[2];
 
     // Step 1: Try gemini-3.1-flash-lite-image if quota allows
     try {

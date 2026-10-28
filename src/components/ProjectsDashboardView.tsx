@@ -73,7 +73,7 @@ export const ProjectsDashboardView: React.FC<ProjectsDashboardViewProps> = ({
             <label className="block text-xs text-[#A6A29A] mb-1">اسم المشروع</label>
             <input
               type="text"
-              placeholder="مثال: شقة التجمع الخامس / تجديد الريسبشن..."
+              placeholder="مثال: تجديد غرفة المعيشة / تصميم شقتي..."
               value={newProjectName}
               onChange={(e) => setNewProjectName(e.target.value)}
               className="w-full bg-[#0B0B0E] border border-white/15 rounded-lg px-3 py-2 text-xs text-[#F5F2EB] focus:border-[#C6A355] outline-none"
