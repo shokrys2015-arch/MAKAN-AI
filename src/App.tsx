@@ -32,7 +32,7 @@ import { ProjectsDashboardView } from './components/ProjectsDashboardView';
 
 type MainTab = 'home' | 'studio' | 'gallery' | 'boq' | 'projects';
 
-const STORAGE_PROJECTS_KEY = 'makan_ai_projects_v4';
+const STORAGE_PROJECTS_KEY = 'makan_ai_projects_v5';
 const STORAGE_PRICES_KEY = 'makan_ai_prices_v1';
 
 function createDefaultRoomUnit(
@@ -55,42 +55,74 @@ function createDefaultRoomUnit(
     modifyFloor: true,
     modifyCeiling: true,
     modifyLighting: true,
-    modifyFurniture: true,
-    modifyCurtains: true,
+    modifyFurniture: false,
+    modifyCurtains: false,
     preserveArchitecture: true,
     wallColorId: 'wall_greige_warm',
     selectedWallShadeHex: '#D7CFC4',
     wallFinishId: 'finish_neoclassic_molding',
     flooringId: 'floor_marble_crema',
     flooringQuality: 'luxury',
-    ceilingOptions: ['ceil_gypsum_cove', 'light_hidden_led', 'light_spotlights', 'light_chandelier'],
+    ceilingOptions: ['ceil_gypsum_flat', 'light_spotlights'],
     lightingTemp: '3000K',
-    selectedFurnitureIds: ['furn_sofa_sectional', 'furn_coffee_table', 'furn_tv_library', 'furn_curtains_rug'],
+    selectedFurnitureIds: [],
     furnitureLuxury: 'standard',
     activeMaskZones: ['walls'],
     customBrushStrokes: [],
   };
 
-  const afterUrl =
-    roomType === 'master_bedroom' || roomType === 'kids_room'
-      ? '/images/room_bedroom_luxury.jpg'
-      : roomType === 'kitchen'
-      ? '/images/room_kitchen_modern.jpg'
-      : '/images/after_neoclassic.jpg';
-
-  const initialVersion: DesignVersion = {
-    id: `ver_init_${id}`,
-    labelAr: 'تصميم نيو كلاسيك — جريج ورخام كريما مارفيل',
-    createdAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-    sourcePhotoId: `ph_init_${id}`,
-    originalDataUrl: beforeUrl,
-    resultDataUrl: afterUrl,
-    selections: defaultSelections,
-    isFavorite: true,
-    aiNotesAr:
-      'تم تنسيق بانوهات الحوائط بلون جريج دافئ مع أرضية رخام كريما مارفيل وإضاءة 3000K مع الحفاظ الكامل على مواضع الفتحات المعمارية.',
-    preservedElementsAr: ['ثبات مواضع الأبواب والشبابيك والفتحات المعمارية', 'ثبات زاوية التصوير وأبعاد الغرفة'],
-  };
+  const initialVersions: DesignVersion[] = [
+    {
+      id: `ver_neo_${id}`,
+      labelAr: 'نيو كلاسيك — جريج ملكي + بانوهات + رخام كريما مارفيل',
+      createdAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      sourcePhotoId: `ph_init_${id}`,
+      originalDataUrl: beforeUrl,
+      resultDataUrl: '/images/after_semi_plaster_neoclassic.jpg',
+      selections: defaultSelections,
+      isFavorite: true,
+      aiNotesAr:
+        'تم تشطيب السقف بالجبس الأبيض والسبوتات الدافئة (3000K)، وتأسيس ودهان الحوائط بلون جريج دافئ مع بانوهات نيو كلاسيك، وتركيب رخام كريما مارفيل مع الحفاظ التام على فتحة الباب والبلكونة وأبعاد الغرفة.',
+      preservedElementsAr: ['الحفاظ الكامل على الأبواب والشبابيك والفتحات', 'ثبات زاوية التصوير وأبعاد الغرفة'],
+    },
+    {
+      id: `ver_min_${id}`,
+      labelAr: 'مينيمال — جريج ملكي (Warm Greige) · الرخام',
+      createdAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      sourcePhotoId: `ph_init_${id}`,
+      originalDataUrl: beforeUrl,
+      resultDataUrl: '/images/after_semi_plaster_minimal.jpg',
+      selections: {
+        ...defaultSelections,
+        styleId: 'minimal',
+        wallFinishId: 'finish_paint_matte',
+      },
+      isFavorite: false,
+      aiNotesAr:
+        'تشطيب مينيمال هادئ بدهان حوائط جريج سادة فائق النعومة، مع سقف جبس مسطح بسبوتات غاطسة وأرضية رخام لامعة تعكس إضاءة البلكونة.',
+      preservedElementsAr: ['الحفاظ الكامل على الأبواب والشبابيك والفتحات', 'ثبات زاوية التصوير وأبعاد الغرفة'],
+    },
+    {
+      id: `ver_mod_${id}`,
+      labelAr: 'مودرن دافئ — تجاليد بديل الخشب · باركيه أرو',
+      createdAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      sourcePhotoId: `ph_init_${id}`,
+      originalDataUrl: beforeUrl,
+      resultDataUrl: '/images/after_semi_plaster_modern.jpg',
+      selections: {
+        ...defaultSelections,
+        styleId: 'modern',
+        wallColorId: 'wall_beige_sand',
+        selectedWallShadeHex: '#DDD2C2',
+        wallFinishId: 'finish_wood_slats',
+        flooringId: 'floor_parquet_oak',
+      },
+      isFavorite: false,
+      aiNotesAr:
+        'تصميم مودرن دافئ يجمع بين دهان البيج الرملي وتجاليد شرائح خشب الأرو الرأسية مع أرضية باركيه وإضاءة سبوتات 3000K.',
+      preservedElementsAr: ['الحفاظ الكامل على الأبواب والشبابيك والفتحات', 'ثبات زاوية التصوير وأبعاد الغرفة'],
+    },
+  ];
 
   const dimensions: RoomDimensionsInput = {
     isMeasuredByUser: false,
@@ -156,14 +188,14 @@ function createDefaultRoomUnit(
         dataUrl: beforeUrl,
         angleLabelAr: 'الزاوية الأساسية',
         isPrimary: true,
-        clarityCheck: { isClear: true, width: 960, height: 580, brightness: 130 },
+        clarityCheck: { isClear: true, width: 1280, height: 800, brightness: 130 },
       },
     ],
     selections: defaultSelections,
-    versions: [initialVersion],
-    selectedVersionId: initialVersion.id,
+    versions: initialVersions,
+    selectedVersionId: initialVersions[0].id,
     dimensions,
-    analysis: buildLocalSmartAnalysis(defaultSelections, { width: 960, height: 580, brightness: 130 }),
+    analysis: buildLocalSmartAnalysis(defaultSelections, { width: 1280, height: 800, brightness: 130 }),
     floorPlanItems: defaultFloorPlan,
   };
 }
