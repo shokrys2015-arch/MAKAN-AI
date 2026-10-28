@@ -1,0 +1,6 @@
+{
+  "name": "مكان AI | MAKAN AI",
+  "description": "تخيّل مساحتك قبل ما تغيّرها — منصة ذكية للتصميم الداخلي وتجديد الأماكن وحصر كميات وتكاليف التشطيبات في مصر.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
