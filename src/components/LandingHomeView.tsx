@@ -1,25 +1,19 @@
-import React, { useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   MakanProject,
   StyleId,
 } from '../types/makan';
 import {
   DESIGN_STYLES,
-  ROOM_TYPES,
 } from '../data/catalogData';
 import {
-  renderProceduralRoomToDataUrl,
   getStylePreviewDataUrl,
 } from '../utils/proceduralRoomRenderer';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import {
   Upload,
-  Sparkles,
-  Sliders,
-  Layers,
   Calculator,
   FolderOpen,
-  ShieldCheck,
   ArrowLeft,
 } from 'lucide-react';
 
@@ -34,6 +28,36 @@ interface LandingHomeViewProps {
   onOpenSavedProject: (projectId: string) => void;
 }
 
+const HERO_COMPARISONS = [
+  {
+    id: 'same_angle',
+    tabLabelAr: 'تحديث الألوان والإضاءة (نفس الزاوية)',
+    beforeUrl: '/images/hero_before.jpg',
+    afterUrl: '/images/hero_after.jpg',
+    beforeLabelAr: 'قبل: ألوان باهتة وإضاءة غير متوازنة',
+    afterLabelAr: 'بعد: باليتة جريج دافئة + باركيه أرو + إضاءة 3000K',
+    preserved: ['ثبات الأثاث والفتحات 100%', 'ثبات زاوية الكاميرا والأبعاد', 'تحديث الدهانات والإضاءة'],
+  },
+  {
+    id: 'semi_plaster',
+    tabLabelAr: 'شقة على المحارة ← نيو كلاسيك',
+    beforeUrl: '/images/before_semi_plaster.jpg',
+    afterUrl: '/images/style_neoclassic.jpg',
+    beforeLabelAr: 'قبل: شقة مصرية نصف تشطيب (على المحارة)',
+    afterLabelAr: 'بعد: تشطيب نيو كلاسيك فاخر بالفرش الكامل',
+    preserved: ['تأسيس وتشطيب متكامل', 'جبس بورد وإضاءة مخفية', 'بورسلين ودهانات يوتن'],
+  },
+  {
+    id: 'master_bedroom',
+    tabLabelAr: 'تحت الإنشاء ← غرفة ماستر فندقية',
+    beforeUrl: '/images/before_unfinished.jpg',
+    afterUrl: '/images/room_bedroom_luxury.jpg',
+    beforeLabelAr: 'قبل: غرفة تحت الإنشاء والتأسيس',
+    afterLabelAr: 'بعد: غرفة نوم ماستر بتصميم نيو كلاسيك وبانوهات',
+    preserved: ['تجاليد وبانوهات حوائط', 'باركيه أرو دافئ', 'إضاءة دافئة 2700K'],
+  },
+];
+
 export const LandingHomeView: React.FC<LandingHomeViewProps> = ({
   projectsCount,
   savedProjects,
@@ -44,36 +68,8 @@ export const LandingHomeView: React.FC<LandingHomeViewProps> = ({
   onOpenBOQCalculator,
   onOpenSavedProject,
 }) => {
-  const heroBeforeUrl = useMemo(
-    () =>
-      renderProceduralRoomToDataUrl({
-        width: 960,
-        height: 560,
-        state: 'unfinished_brick',
-        roomType: 'living_room',
-      }),
-    []
-  );
-
-  const heroAfterUrl = useMemo(
-    () =>
-      renderProceduralRoomToDataUrl({
-        width: 960,
-        height: 560,
-        state: 'designed',
-        roomType: 'living_room',
-        wallHex: '#E8DFD1',
-        wallFinishPattern: 'neoclassic_molding',
-        floorPrimaryHex: '#EFE7DA',
-        floorSecondaryHex: '#C6A87D',
-        floorPattern: 'marble',
-        lightingTemp: '3000K',
-        hasGypsumCove: true,
-        hasSpotlights: true,
-        hasChandelier: true,
-      }),
-    []
-  );
+  const [activeHeroIdx, setActiveHeroIdx] = useState<number>(0);
+  const currentHero = HERO_COMPARISONS[activeHeroIdx] || HERO_COMPARISONS[0];
 
   return (
     <div className="space-y-16 pb-12">
@@ -111,16 +107,9 @@ export const LandingHomeView: React.FC<LandingHomeViewProps> = ({
 
                 <div className="pt-2">
                   <div className="text-xs text-[#A6A29A] mb-2">
-                    أو ابدأ فوراً بتجربة حية على حالة مكان مشابهة لمكانك:
+                    أو ابدأ فوراً بتجربة حية على حالة مكان حقيقية:
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onStartWithSampleState('unfinished_brick')}
-                      className="py-2 px-2.5 bg-[#0B0B0E] hover:bg-white/5 border border-white/10 rounded-lg text-xs text-[#EAE4DA] font-medium transition-colors"
-                    >
-                      على الطوب الأحمر
-                    </button>
                     <button
                       type="button"
                       onClick={() => onStartWithSampleState('semi_plaster')}
@@ -130,10 +119,17 @@ export const LandingHomeView: React.FC<LandingHomeViewProps> = ({
                     </button>
                     <button
                       type="button"
+                      onClick={() => onStartWithSampleState('unfinished_brick')}
+                      className="py-2 px-2.5 bg-[#0B0B0E] hover:bg-white/5 border border-white/10 rounded-lg text-xs text-[#EAE4DA] font-medium transition-colors"
+                    >
+                      تحت الإنشاء
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => onStartWithSampleState('old_room')}
                       className="py-2 px-2.5 bg-[#0B0B0E] hover:bg-white/5 border border-white/10 rounded-lg text-xs text-[#EAE4DA] font-medium transition-colors"
                     >
-                      غرفة قديمة للتجديد
+                      غرفة قائمة للتجديد
                     </button>
                   </div>
                 </div>
@@ -147,20 +143,35 @@ export const LandingHomeView: React.FC<LandingHomeViewProps> = ({
           </div>
 
           {/* Left Column: Interactive Before & After Showcase */}
-          <div className="lg:col-span-7 bg-[#141418] border border-white/10 rounded-2xl p-4 md:p-5 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-2">
+          <div className="lg:col-span-7 bg-[#141418] border border-white/10 rounded-2xl p-4 md:p-5 flex flex-col justify-between space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs font-bold text-[#F5F2EB]">
-                مقارنة تفاعلية حية (قبل وبعد التشطيب مع ثبات الفتحات المعمارية)
+                مقارنة تفاعلية حية (قبل وبعد التشطيب بصور فوتوغرافية واقعية)
               </span>
-              <span className="text-xs text-[#C6A355]">اسحب المؤشر للمقارنة ⇄</span>
+              <div className="flex items-center gap-1.5 bg-[#0B0B0E] p-1 rounded-lg border border-white/10">
+                {HERO_COMPARISONS.map((item, idx) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setActiveHeroIdx(idx)}
+                    className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-colors ${
+                      activeHeroIdx === idx
+                        ? 'bg-[#C6A355] text-[#0B0B0E]'
+                        : 'text-[#A6A29A] hover:text-white'
+                    }`}
+                  >
+                    {item.tabLabelAr}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <BeforeAfterSlider
-              beforeUrl={heroBeforeUrl}
-              afterUrl={heroAfterUrl}
-              beforeLabelAr="قبل: غرفة على الطوب الأحمر والمحارة"
-              afterLabelAr="بعد: تشطيب نيو كلاسيك (رخام كريما مارفيل + بانوهات)"
-              preservedElementsAr={['ثبات فتحة الباب الجانبي', 'ثبات الشباك ومصدر الإضاءة', 'ثبات أبعاد الغرفة']}
+              beforeUrl={currentHero.beforeUrl}
+              afterUrl={currentHero.afterUrl}
+              beforeLabelAr={currentHero.beforeLabelAr}
+              afterLabelAr={currentHero.afterLabelAr}
+              preservedElementsAr={currentHero.preserved}
             />
           </div>
         </div>
@@ -192,7 +203,7 @@ export const LandingHomeView: React.FC<LandingHomeViewProps> = ({
             <div className="text-xs font-mono text-[#C6A355] font-bold">02. تعديل عنصر محدد (Masking)</div>
             <h3 className="text-base font-bold text-[#F5F2EB]">غيّر الحائط فقط أو الأرضية فقط</h3>
             <p className="text-xs text-[#A6A29A] leading-relaxed">
-              حدد الحائط لتجربة دهانات يوتن والبانوهات، أو حدد الأرضية فقط لتجربة البورسلين والرخام والباركيه مع بقاء الأثاث كما هو.
+              حدد الحائط لتجربة دهانات يوتن والبانوهات، أو حدد الأرضية فقط لتجربة البورسلين والرخام والباركيه مع بقاء الفتحات والأبواب كما هي.
             </p>
           </div>
 
@@ -250,7 +261,7 @@ export const LandingHomeView: React.FC<LandingHomeViewProps> = ({
                     <img
                       src={imgUrl}
                       alt={st.nameAr}
-                      referrerPolicy="no-referrer"
+                      loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                     />
                   </div>

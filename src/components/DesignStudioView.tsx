@@ -530,10 +530,18 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
                         key={sample.id}
                         type="button"
                         onClick={() => handleLoadSampleRoom(sample.id)}
-                        className="w-full text-right p-3 rounded-lg bg-[#141418] hover:bg-white/5 border border-white/10 hover:border-[#C6A355]/50 transition-colors"
+                        className="w-full text-right p-2.5 rounded-lg bg-[#141418] hover:bg-white/5 border border-white/10 hover:border-[#C6A355]/50 transition-colors flex items-center gap-3"
                       >
-                        <div className="text-xs font-bold text-[#F5F2EB]">{sample.nameAr}</div>
-                        <div className="text-[11px] text-[#A6A29A] mt-0.5">{sample.subtitleAr}</div>
+                        <img
+                          src={sample.imageUrl}
+                          alt={sample.nameAr}
+                          loading="lazy"
+                          className="w-16 h-12 object-cover rounded border border-white/10 shrink-0"
+                        />
+                        <div>
+                          <div className="text-xs font-bold text-[#F5F2EB]">{sample.nameAr}</div>
+                          <div className="text-[11px] text-[#A6A29A] mt-0.5 line-clamp-2">{sample.subtitleAr}</div>
+                        </div>
                       </button>
                     ))}
                   </div>

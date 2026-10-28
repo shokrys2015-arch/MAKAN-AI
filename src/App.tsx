@@ -32,19 +32,17 @@ import { ProjectsDashboardView } from './components/ProjectsDashboardView';
 
 type MainTab = 'home' | 'studio' | 'gallery' | 'boq' | 'projects';
 
-const STORAGE_PROJECTS_KEY = 'makan_ai_projects_v1';
+const STORAGE_PROJECTS_KEY = 'makan_ai_projects_v3';
 const STORAGE_PRICES_KEY = 'makan_ai_prices_v1';
 
 function createDefaultRoomUnit(
   id: string,
   nameAr: string,
   roomType: RoomTypeId = 'living_room',
-  initialState: 'unfinished_brick' | 'semi_plaster' | 'old_room' = 'unfinished_brick'
+  initialState: 'unfinished_brick' | 'semi_plaster' | 'old_room' = 'semi_plaster'
 ): ApartmentRoomUnit {
   const roomMeta = ROOM_TYPES.find((r) => r.id === roomType) || ROOM_TYPES[0];
   const beforeUrl = renderProceduralRoomToDataUrl({
-    width: 960,
-    height: 580,
     state: initialState,
     roomType,
   });
@@ -73,21 +71,12 @@ function createDefaultRoomUnit(
     customBrushStrokes: [],
   };
 
-  const afterUrl = renderProceduralRoomToDataUrl({
-    width: 960,
-    height: 580,
-    state: 'designed',
-    roomType,
-    wallHex: '#D7CFC4',
-    wallFinishPattern: 'neoclassic_molding',
-    floorPrimaryHex: '#EFE7DA',
-    floorSecondaryHex: '#C6A87D',
-    floorPattern: 'marble',
-    lightingTemp: '3000K',
-    hasGypsumCove: true,
-    hasSpotlights: true,
-    hasChandelier: true,
-  });
+  const afterUrl =
+    roomType === 'master_bedroom' || roomType === 'kids_room'
+      ? '/images/room_bedroom_luxury.jpg'
+      : roomType === 'kitchen'
+      ? '/images/room_kitchen_modern.jpg'
+      : '/images/after_neoclassic.jpg';
 
   const initialVersion: DesignVersion = {
     id: `ver_init_${id}`,
@@ -99,8 +88,8 @@ function createDefaultRoomUnit(
     selections: defaultSelections,
     isFavorite: true,
     aiNotesAr:
-      'تم تنسيق بانوهات الحوائط بلون جريج دافئ مع أرضية رخام كريما مارفيل وإضاءة 3000K مع الحفاظ الكامل على موضعي الباب والشباك.',
-    preservedElementsAr: ['مواضع الأبواب والشبابيك والأعمدة', 'زاوية التصوير وأبعاد الغرفة'],
+      'تم تنسيق بانوهات الحوائط بلون جريج دافئ مع أرضية رخام كريما مارفيل وإضاءة 3000K مع الحفاظ الكامل على مواضع الفتحات المعمارية.',
+    preservedElementsAr: ['ثبات مواضع الأبواب والشبابيك والفتحات المعمارية', 'ثبات زاوية التصوير وأبعاد الغرفة'],
   };
 
   const dimensions: RoomDimensionsInput = {
@@ -180,8 +169,8 @@ function createDefaultRoomUnit(
 }
 
 function createInitialProjects(): MakanProject[] {
-  const room1 = createDefaultRoomUnit('room_reception_1', 'الريسبشن والمعيشة', 'living_room', 'unfinished_brick');
-  const room2 = createDefaultRoomUnit('room_master_2', 'غرفة النوم الرئيسية (ماستر)', 'master_bedroom', 'semi_plaster');
+  const room1 = createDefaultRoomUnit('room_reception_1', 'الريسبشن والمعيشة', 'living_room', 'semi_plaster');
+  const room2 = createDefaultRoomUnit('room_master_2', 'غرفة النوم الرئيسية (ماستر)', 'master_bedroom', 'unfinished_brick');
 
   return [
     {
