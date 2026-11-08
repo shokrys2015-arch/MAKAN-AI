@@ -149,6 +149,36 @@ export interface UploadedPhoto {
   };
 }
 
+export interface ArchitecturalHotspot {
+  x: number;
+  y: number;
+  label: string;
+  detail: string;
+}
+
+export interface PantoneColorItem {
+  colorName: string;
+  hex: string;
+  ratio: string;
+  purpose: string;
+}
+
+export interface PaletteColorItem {
+  name: string;
+  hex: string;
+  use: string;
+}
+
+export interface DetailedDesignAdvice {
+  styleDefinition: string;
+  spatialPlanning: string;
+  lightingLayout: string;
+  materialsAndTexturalDetails: string;
+  furniturePlacementStepByStep: string[];
+  pantoneColors: PantoneColorItem[];
+  hotspots: ArchitecturalHotspot[];
+}
+
 export interface UserDesignSelections {
   roomType: RoomTypeId;
   designPath: DesignPathId;
@@ -171,6 +201,11 @@ export interface UserDesignSelections {
   lightingTemp: '2700K' | '3000K' | '4000K' | '6000K';
   selectedFurnitureIds: string[];
   furnitureLuxury: QualityTier;
+  // Additional rich customizer selections (from VISION AI)
+  decorStyleAr?: string;
+  plantsStyleAr?: string;
+  furnitureMaterialStyleAr?: string;
+  customNotesAr?: string;
   // Element masking state
   activeMaskZones: MaskZoneId[];
   customBrushStrokes: { x: number; y: number; radius: number }[];
@@ -193,7 +228,13 @@ export interface SmartRoomAnalysis {
     recommendedStyleIds: StyleId[];
     colorHarmonyAdviceAr: string;
     measurementDisclaimerAr: string;
+    layoutAnalysisAr?: string;
+    strengthsAr?: string[];
+    weaknessesAr?: string[];
+    decorAdviceAr?: string;
+    palette?: PaletteColorItem[];
   };
+  designAdvice?: DetailedDesignAdvice;
 }
 
 export interface DesignVersion {
@@ -209,6 +250,8 @@ export interface DesignVersion {
   alternativeIndex?: number;
   aiNotesAr: string;
   preservedElementsAr: string[];
+  hotspots?: ArchitecturalHotspot[];
+  designAdvice?: DetailedDesignAdvice;
 }
 
 export interface RoomDimensionsInput {

@@ -61,6 +61,68 @@ export const FloorPlan2D: React.FC<FloorPlan2DProps> = ({
     setSelectedId(null);
   };
 
+  const handleAutoArrange = () => {
+    const arranged: FloorPlanFurnitureItem[] = [
+      {
+        id: 'fp_auto_sofa',
+        nameAr: 'كنبة رئيسية 3 مقاعد',
+        category: 'sofa',
+        xMeters: +(Math.max(0.4, safeLength / 2 - 1.15)).toFixed(2),
+        yMeters: 0.35,
+        widthMeters: 2.3,
+        depthMeters: 0.9,
+        rotationDeg: 0,
+        colorHex: '#C6A355',
+      },
+      {
+        id: 'fp_auto_table',
+        nameAr: 'طاولة وسط رخام',
+        category: 'table',
+        xMeters: +(Math.max(0.6, safeLength / 2 - 0.6)).toFixed(2),
+        yMeters: +(Math.min(safeWidth - 1.2, 1.55)).toFixed(2),
+        widthMeters: 1.2,
+        depthMeters: 0.65,
+        rotationDeg: 0,
+        colorHex: '#D8CEBE',
+      },
+      {
+        id: 'fp_auto_tv',
+        nameAr: 'وحدة تلفزيون',
+        category: 'tv_unit',
+        xMeters: +(Math.max(0.5, safeLength / 2 - 1.0)).toFixed(2),
+        yMeters: +(Math.max(2.2, safeWidth - 0.65)).toFixed(2),
+        widthMeters: 2.0,
+        depthMeters: 0.45,
+        rotationDeg: 0,
+        colorHex: '#7A5B40',
+      },
+      {
+        id: 'fp_auto_chair',
+        nameAr: 'فوتيه مفرد',
+        category: 'chair',
+        xMeters: +(Math.max(0.25, safeLength - 1.15)).toFixed(2),
+        yMeters: 1.35,
+        widthMeters: 0.85,
+        depthMeters: 0.85,
+        rotationDeg: 0,
+        colorHex: '#B8945F',
+      },
+      {
+        id: 'fp_auto_plant',
+        nameAr: 'نبات داخلي',
+        category: 'plant',
+        xMeters: +(Math.max(0.2, safeLength - 0.75)).toFixed(2),
+        yMeters: 0.35,
+        widthMeters: 0.5,
+        depthMeters: 0.5,
+        rotationDeg: 0,
+        colorHex: '#4E7A56',
+      },
+    ];
+    onChangeItems(arranged);
+    setSelectedId(arranged[0].id);
+  };
+
   return (
     <div className="bg-[#141418] border border-white/10 rounded-xl p-5">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-4 pb-4 border-b border-white/10">
@@ -73,18 +135,28 @@ export const FloorPlan2D: React.FC<FloorPlan2DProps> = ({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowCirculationPaths(!showCirculationPaths)}
-          className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-            showCirculationPaths
-              ? 'bg-[#C6A355]/15 border-[#C6A355] text-[#C6A355]'
-              : 'bg-[#0B0B0E] border-white/10 text-[#A6A29A]'
-          }`}
-        >
-          <Eye className="w-3.5 h-3.5" />
-          <span>{showCirculationPaths ? 'إخفاء مسارات الحركة' : 'إظهار مسارات الحركة'}</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleAutoArrange}
+            className="px-3 py-1.5 text-xs font-bold rounded-lg bg-[#C6A355] text-[#0B0B0E] hover:bg-[#d4b265] transition-colors whitespace-nowrap shrink-0"
+          >
+            ترتيب ذكي تلقائي للأثاث
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowCirculationPaths(!showCirculationPaths)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+              showCirculationPaths
+                ? 'bg-[#C6A355]/15 border-[#C6A355] text-[#C6A355]'
+                : 'bg-[#0B0B0E] border-white/10 text-[#A6A29A]'
+            }`}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>{showCirculationPaths ? 'إخفاء مسارات الحركة' : 'إظهار مسارات الحركة'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Add Furniture Strip */}

@@ -23,6 +23,7 @@ import { renderProceduralRoomToDataUrl } from './utils/proceduralRoomRenderer';
 import {
   composePhotometricDesign,
   buildLocalSmartAnalysis,
+  buildTailoredDesignAdvice,
   RoomSegmentationGuide,
 } from './utils/imageCompositor';
 import { compileHiddenArchitecturalPrompt } from './utils/backgroundPromptCompiler';
@@ -34,7 +35,7 @@ import { ProjectsDashboardView } from './components/ProjectsDashboardView';
 
 type MainTab = 'home' | 'studio' | 'gallery' | 'boq' | 'projects';
 
-const STORAGE_PROJECTS_KEY = 'makan_ai_projects_v9';
+const STORAGE_PROJECTS_KEY = 'makan_ai_projects_v10';
 const STORAGE_PRICES_KEY = 'makan_ai_prices_v1';
 
 function createDefaultRoomUnit(
@@ -71,60 +72,11 @@ function createDefaultRoomUnit(
     furnitureLuxury: 'standard',
     activeMaskZones: ['walls'],
     customBrushStrokes: [],
+    decorStyleAr: 'بانوهات كلاسيكية ناعمة وإطارات متناظرة',
+    plantsStyleAr: 'نباتات ظل داخلية في أصص سيراميك مطفي',
+    furnitureMaterialStyleAr: 'أقمشة كتان وبوكليه ناعمة مع أخشاب دافئة',
+    customNotesAr: '',
   };
-
-  const initialVersions: DesignVersion[] = [
-    {
-      id: `ver_neo_${id}`,
-      labelAr: 'نيو كلاسيك — جريج ملكي + بانوهات + رخام كريما مارفيل',
-      createdAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-      sourcePhotoId: `ph_init_${id}`,
-      originalDataUrl: beforeUrl,
-      resultDataUrl: '/images/after_semi_plaster_neoclassic.jpg',
-      selections: defaultSelections,
-      isFavorite: true,
-      aiNotesAr:
-        'تم تشطيب السقف بالجبس الأبيض والسبوتات الدافئة (3000K)، وتأسيس ودهان الحوائط بلون جريج دافئ مع بانوهات نيو كلاسيك، وتركيب رخام كريما مارفيل مع الحفاظ التام على فتحة الباب والبلكونة وأبعاد الغرفة.',
-      preservedElementsAr: ['الحفاظ الكامل على الأبواب والشبابيك والفتحات', 'ثبات زاوية التصوير وأبعاد الغرفة'],
-    },
-    {
-      id: `ver_min_${id}`,
-      labelAr: 'مينيمال — جريج ملكي (Warm Greige) · الرخام',
-      createdAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-      sourcePhotoId: `ph_init_${id}`,
-      originalDataUrl: beforeUrl,
-      resultDataUrl: '/images/after_semi_plaster_minimal.jpg',
-      selections: {
-        ...defaultSelections,
-        styleId: 'minimal',
-        wallFinishId: 'finish_paint_matte',
-      },
-      isFavorite: false,
-      aiNotesAr:
-        'تشطيب مينيمال هادئ بدهان حوائط جريج سادة فائق النعومة، مع سقف جبس مسطح بسبوتات غاطسة وأرضية رخام لامعة تعكس إضاءة البلكونة.',
-      preservedElementsAr: ['الحفاظ الكامل على الأبواب والشبابيك والفتحات', 'ثبات زاوية التصوير وأبعاد الغرفة'],
-    },
-    {
-      id: `ver_mod_${id}`,
-      labelAr: 'مودرن دافئ — بيج رملي ناعم · إضاءة 3000K',
-      createdAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-      sourcePhotoId: `ph_init_${id}`,
-      originalDataUrl: beforeUrl,
-      resultDataUrl: '/images/after_semi_plaster_modern.jpg',
-      selections: {
-        ...defaultSelections,
-        styleId: 'modern',
-        wallColorId: 'wall_beige_sand',
-        selectedWallShadeHex: '#DDD2C2',
-        wallFinishId: 'finish_paint_matte',
-        flooringId: 'floor_marble_crema',
-      },
-      isFavorite: false,
-      aiNotesAr:
-        'تصميم مودرن دافئ يجمع بين دهان البيج الرملي الفائق النعومة مع إضاءة سبوتات غاطسة 3000K وأرضية رخام متناسقة.',
-      preservedElementsAr: ['الحفاظ الكامل على الأبواب والشبابيك والفتحات', 'ثبات زاوية التصوير وأبعاد الغرفة'],
-    },
-  ];
 
   const dimensions: RoomDimensionsInput = {
     isMeasuredByUser: false,
@@ -142,6 +94,71 @@ function createDefaultRoomUnit(
     includeSupervisionAndContingency: true,
     contingencyPercent: 10,
   };
+
+  const neoAdvice = buildTailoredDesignAdvice(defaultSelections, dimensions);
+  const minSelections: UserDesignSelections = {
+    ...defaultSelections,
+    styleId: 'minimal',
+    wallFinishId: 'finish_paint_matte',
+  };
+  const minAdvice = buildTailoredDesignAdvice(minSelections, dimensions);
+  const modSelections: UserDesignSelections = {
+    ...defaultSelections,
+    styleId: 'modern',
+    wallColorId: 'wall_beige_sand',
+    selectedWallShadeHex: '#DDD2C2',
+    wallFinishId: 'finish_paint_matte',
+    flooringId: 'floor_marble_crema',
+  };
+  const modAdvice = buildTailoredDesignAdvice(modSelections, dimensions);
+
+  const initialVersions: DesignVersion[] = [
+    {
+      id: `ver_neo_${id}`,
+      labelAr: 'نيو كلاسيك — جريج ملكي + بانوهات + رخام كريما مارفيل',
+      createdAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      sourcePhotoId: `ph_init_${id}`,
+      originalDataUrl: beforeUrl,
+      resultDataUrl: '/images/after_semi_plaster_neoclassic.jpg',
+      selections: defaultSelections,
+      isFavorite: true,
+      aiNotesAr:
+        'تم تشطيب السقف بالجبس الأبيض والسبوتات الدافئة (3000K)، وتأسيس ودهان الحوائط بلون جريج دافئ مع بانوهات نيو كلاسيك، وتركيب رخام كريما مارفيل مع الحفاظ التام على فتحة الباب والبلكونة وأبعاد الغرفة.',
+      preservedElementsAr: ['الحفاظ الكامل على الأبواب والشبابيك والفتحات', 'ثبات زاوية التصوير وأبعاد الغرفة'],
+      hotspots: neoAdvice.hotspots,
+      designAdvice: neoAdvice,
+    },
+    {
+      id: `ver_min_${id}`,
+      labelAr: 'مينيمال — جريج ملكي (Warm Greige) · الرخام',
+      createdAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      sourcePhotoId: `ph_init_${id}`,
+      originalDataUrl: beforeUrl,
+      resultDataUrl: '/images/after_semi_plaster_minimal.jpg',
+      selections: minSelections,
+      isFavorite: false,
+      aiNotesAr:
+        'تشطيب مينيمال هادئ بدهان حوائط جريج سادة فائق النعومة، مع سقف جبس مسطح بسبوتات غاطسة وأرضية رخام لامعة تعكس إضاءة البلكونة.',
+      preservedElementsAr: ['الحفاظ الكامل على الأبواب والشبابيك والفتحات', 'ثبات زاوية التصوير وأبعاد الغرفة'],
+      hotspots: minAdvice.hotspots,
+      designAdvice: minAdvice,
+    },
+    {
+      id: `ver_mod_${id}`,
+      labelAr: 'مودرن دافئ — بيج رملي ناعم · إضاءة 3000K',
+      createdAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      sourcePhotoId: `ph_init_${id}`,
+      originalDataUrl: beforeUrl,
+      resultDataUrl: '/images/after_semi_plaster_modern.jpg',
+      selections: modSelections,
+      isFavorite: false,
+      aiNotesAr:
+        'تصميم مودرن دافئ يجمع بين دهان البيج الرملي الفائق النعومة مع إضاءة سبوتات غاطسة 3000K وأرضية رخام متناسقة.',
+      preservedElementsAr: ['الحفاظ الكامل على الأبواب والشبابيك والفتحات', 'ثبات زاوية التصوير وأبعاد الغرفة'],
+      hotspots: modAdvice.hotspots,
+      designAdvice: modAdvice,
+    },
+  ];
 
   const defaultFloorPlan: FloorPlanFurnitureItem[] = [
     {
@@ -197,7 +214,11 @@ function createDefaultRoomUnit(
     versions: initialVersions,
     selectedVersionId: initialVersions[0].id,
     dimensions,
-    analysis: buildLocalSmartAnalysis(defaultSelections, { width: 1280, height: 800, brightness: 130 }),
+    analysis: buildLocalSmartAnalysis(
+      defaultSelections,
+      { width: 1280, height: 800, brightness: 130 },
+      dimensions
+    ),
     floorPlanItems: defaultFloorPlan,
   };
 }
@@ -347,6 +368,12 @@ export default function App() {
     if (reqId !== liveRequestCounterRef.current) return;
 
     const alignedBefore = fastComp.normalizedBeforeDataUrl || primaryPhoto.dataUrl;
+    const tailoredAdvice = buildTailoredDesignAdvice(nextSelections, activeRoom.dimensions);
+    const updatedAnalysis = buildLocalSmartAnalysis(
+      nextSelections,
+      primaryPhoto.clarityCheck,
+      activeRoom.dimensions
+    );
 
     updateActiveRoom((rm) => {
       const currentVer =
@@ -355,6 +382,7 @@ export default function App() {
         return {
           ...rm,
           selections: nextSelections,
+          analysis: updatedAnalysis,
           versions: rm.versions.map((v) =>
             v.id === currentVer.id
               ? {
@@ -364,6 +392,8 @@ export default function App() {
                   resultDataUrl: fastComp.resultDataUrl,
                   selections: { ...nextSelections },
                   preservedElementsAr: fastComp.preservedElementsAr,
+                  hotspots: tailoredAdvice.hotspots,
+                  designAdvice: tailoredAdvice,
                 }
               : v
           ),
@@ -381,10 +411,13 @@ export default function App() {
           aiNotesAr:
             'تم تطبيق الاختيارات فوراً مع الحفاظ الكامل على الأبواب والشبابيك وهندسة الغرفة الأصلية.',
           preservedElementsAr: fastComp.preservedElementsAr,
+          hotspots: tailoredAdvice.hotspots,
+          designAdvice: tailoredAdvice,
         };
         return {
           ...rm,
           selections: nextSelections,
+          analysis: updatedAnalysis,
           versions: [autoVer, ...rm.versions],
           selectedVersionId: autoVer.id,
         };
@@ -551,6 +584,7 @@ export default function App() {
             serverSegmentation
           );
           const alignedBefore = comp.normalizedBeforeDataUrl || primaryPhoto.dataUrl;
+          const cfgAdvice = buildTailoredDesignAdvice(cfg.selections, activeRoom.dimensions);
           generatedVersions.push({
             id: `ver_${Date.now()}_${cfg.idx}`,
             labelAr: cfg.labelAr,
@@ -566,11 +600,20 @@ export default function App() {
               serverAiNotes ||
               `تم إنشاء ${cfg.labelAr} بشكل مستقل مع الحفاظ على الأبواب والشبابيك وأبعاد الغرفة.`,
             preservedElementsAr: comp.preservedElementsAr,
+            hotspots: cfgAdvice.hotspots,
+            designAdvice: cfgAdvice,
           });
         }
 
+        const updatedAnalysis = buildLocalSmartAnalysis(
+          sel,
+          primaryPhoto.clarityCheck,
+          activeRoom.dimensions
+        );
+
         updateActiveRoom((rm) => ({
           ...rm,
+          analysis: updatedAnalysis,
           versions: [
             ...generatedVersions,
             ...rm.versions.filter((v) => v.sourcePhotoId === primaryPhoto.id),
@@ -591,6 +634,13 @@ export default function App() {
             ? `تعديل موضعي (${sel.activeMaskZones.join(' + ')})`
             : styleObj.nameAr;
 
+        const tailoredAdvice = buildTailoredDesignAdvice(sel, activeRoom.dimensions);
+        const updatedAnalysis = buildLocalSmartAnalysis(
+          sel,
+          primaryPhoto.clarityCheck,
+          activeRoom.dimensions
+        );
+
         const newVer: DesignVersion = {
           id: `ver_${Date.now()}`,
           labelAr: `${modePrefix} — ${wallColorObj.nameAr} · ${floorObj.typeAr}`,
@@ -604,10 +654,13 @@ export default function App() {
             serverAiNotes ||
             'تم تطبيق الاختيارات المرئية على المساحة مع الحفاظ الكامل على مواضع الأبواب والشبابيك وزاوية التصوير.',
           preservedElementsAr: comp.preservedElementsAr,
+          hotspots: tailoredAdvice.hotspots,
+          designAdvice: tailoredAdvice,
         };
 
         updateActiveRoom((rm) => ({
           ...rm,
+          analysis: updatedAnalysis,
           photos: rm.photos.map((p) =>
             p.id === primaryPhoto.id ? { ...p, dataUrl: alignedBefore } : p
           ),
@@ -632,6 +685,11 @@ export default function App() {
 
     setIsAnalyzing(true);
     try {
+      const localAnalysis = buildLocalSmartAnalysis(
+        activeRoom.selections,
+        primaryPhoto.clarityCheck,
+        activeRoom.dimensions
+      );
       const roomName = ROOM_TYPES.find((r) => r.id === activeRoom.selections.roomType)?.nameAr || 'غرفة';
       const res = await fetch('/api/ai/analyze', {
         method: 'POST',
@@ -646,21 +704,28 @@ export default function App() {
         if (data.aiPowered && data.analysis) {
           updateActiveRoom((rm) => ({
             ...rm,
-            analysis: data.analysis,
+            analysis: {
+              ...localAnalysis,
+              ...data.analysis,
+              designAdvice: localAnalysis.designAdvice,
+            },
           }));
-          showToast('تم تحديث التحليل الذكي للمكان بنجاح');
+          showToast('تم تحديث التحليل الذكي والخطة الهندسية للمكان بنجاح');
           return;
         }
       }
       // Local fallback
-      const localAnalysis = buildLocalSmartAnalysis(activeRoom.selections, primaryPhoto.clarityCheck);
       updateActiveRoom((rm) => ({
         ...rm,
         analysis: localAnalysis,
       }));
       showToast('تم تحديث التحليل الهندسي لعناصر المكان');
     } catch (_e) {
-      const localAnalysis = buildLocalSmartAnalysis(activeRoom.selections, primaryPhoto.clarityCheck);
+      const localAnalysis = buildLocalSmartAnalysis(
+        activeRoom.selections,
+        primaryPhoto.clarityCheck,
+        activeRoom.dimensions
+      );
       updateActiveRoom((rm) => ({
         ...rm,
         analysis: localAnalysis,
@@ -994,6 +1059,17 @@ export default function App() {
             }}
             onUpdateFloorPlanItems={(items) => {
               updateActiveRoom((rm) => ({ ...rm, floorPlanItems: items }));
+            }}
+            onUpdateDimensions={(dimensions) => {
+              updateActiveRoom((rm) => ({
+                ...rm,
+                dimensions,
+                analysis: buildLocalSmartAnalysis(
+                  rm.selections,
+                  rm.photos[0]?.clarityCheck || { width: 1280, height: 800, brightness: 130 },
+                  dimensions
+                ),
+              }));
             }}
             onOpenBOQForSelectedDesign={() => setActiveTab('boq')}
           />

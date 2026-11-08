@@ -1,0 +1,617 @@
+import React, { useState, useEffect } from "react";
+import { Project, RoomDimensions, AnalysisResponse, DesignAdviceResponse } from "./types";
+import Dashboard from "./components/Dashboard";
+import ImageUploader from "./components/ImageUploader";
+import CustomizerPanel from "./components/CustomizerPanel";
+import VisualizerCanvas from "./components/VisualizerCanvas";
+import SmartSuggestionsPanel from "./components/SmartSuggestionsPanel";
+import ThreeDSpacePlanner from "./components/ThreeDSpacePlanner";
+import {
+  ROOM_TYPES,
+  STYLES,
+  COLOR_THEMES,
+  FLOORINGS,
+  WALLS_FINISHES,
+  LIGHTINGS,
+  DECORATIONS,
+  PLANTS,
+  FURNITURE_STYLES,
+  getBestMatchingRender,
+  getPresetLabel
+} from "./constants";
+
+export default function App() {
+  // Navigation State
+  const [activeTab, setActiveTab] = useState<"dashboard" | "workspace">("dashboard");
+
+  // Project Collection State
+  const [projects, setProjects] = useState<Project[]>([]);
+
+  // WORKSPACE CORE STATE DECK
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [dimensions, setDimensions] = useState<RoomDimensions>({
+    width: "4",
+    length: "5",
+    height: "2.8"
+  });
+  const [roomType, setRoomType] = useState<string>("bedroom");
+  const [style, setStyle] = useState<string>("modern");
+  const [primaryColors, setPrimaryColors] = useState<string>("neutral-warm");
+  const [flooring, setFlooring] = useState<string>("wood-parquet");
+  const [walls, setWalls] = useState<string>("matte-paint");
+  const [lighting, setLighting] = useState<string>("magnetic-tracks");
+  const [decor, setDecor] = useState<string>("minimalist-art");
+  const [plants, setPlants] = useState<string>("ficus-lyrata");
+  const [furnitureStyle, setFurnitureStyle] = useState<string>("minimal-boucle");
+  const [customNotes, setCustomNotes] = useState<string>("");
+
+  // State calculations
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [activeProjectTitle, setActiveProjectTitle] = useState<string>("");
+  const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
+  const [advice, setAdvice] = useState<DesignAdviceResponse | null>(null);
+  const [beforeImage, setBeforeImage] = useState<string | null>(null);
+  const [afterImage, setAfterImage] = useState<string | null>(null);
+
+  // In-app Save Modal & Toast state (replaces window.prompt / window.alert)
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState<boolean>(false);
+  const [saveTitleInput, setSaveTitleInput] = useState<string>("");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // 3D placement trigger state
+  const [autoArrangeTrigger, setAutoArrangeTrigger] = useState<number>(0);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Initial populate or load
+  useEffect(() => {
+    const raw = localStorage.getItem("interior_designer_projects");
+    if (raw) {
+      try {
+        setProjects(JSON.parse(raw));
+      } catch (e) {
+        console.error("Failed to parse local projects:", e);
+      }
+    } else {
+      const showcases: Project[] = [
+        {
+          id: "showcase-reception",
+          title: "صالون عربي دافئ ذو طابع معاصر - ريسبشن العائلة",
+          roomType: "reception",
+          style: "arabesque",
+          beforeImage: "https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=1000&auto=format&fit=crop",
+          afterImage: "/src/assets/images/arabic_reception_1779476113961.png",
+          dimensions: { width: "5", length: "6.5", height: "3.2" },
+          date: "2026-05-22",
+          options: {
+            primaryColors: "desert-clay",
+            flooring: "porcelain-marble",
+            walls: "stucco-antique",
+            lighting: "warm-chandelier",
+            decor: "brass-accents",
+            plants: "striked-palm",
+            furnitureStyle: "natural-wood"
+          },
+          analysis: {
+            layoutAnalysis: "صالون واسع متكامل تدخله الإضاءة من الروشن الغربي، يوضح مرونة تصميمية لحقن الزخارف.",
+            strengths: ["الأسقف المرتفعة البالغة 3.2 متر تعطي أفقاً بصرياً فخماً.", "تناسق رائع لمخارج التبريد المدمجة."],
+            weaknesses: ["الجدار الرئيسي للصالون يحتاج إلى دمج تجاليد لكسر الملل البصري."],
+            lightingAndColor: "توجيه الإضاءة الحالية نحو الحوائط المحورية للصالون يزيد من شعور التماسك مع ألوان الباستيل الدافئة والرماد الزجاجي.",
+            decorAdvice: "ننصح بوضع الصوفا المزدوجة بموازاة الروشن الخشبي المعاصر وجعل الطاولة مستديرة لتيسير الحركة.",
+            palette: [
+              { name: "أوف وايت رملي", hex: "#F5F2EB", use: "طلاء للأسقف والحوائط الأساسية" },
+              { name: "بيج دافئ", hex: "#E3DAC9", use: "الحوائط المحورية وخلفية التلفاز" },
+              { name: "زيتوني هادئ", hex: "#5A5A40", use: "الستائر ونباتات الزاوية أو الأثاث المخملي" }
+            ]
+          },
+          advice: {
+            styleDefinition: "يمثل النمط العربي المطور صياغة معاصرة للمفردات الشرقية التراثية بأسلوب مريح بصرياً ونظير للمودرن الفخم.",
+            spatialPlanning: "يتم تخطيط منطقة الحركة بمسار طولي مقتصد لا يؤثر على مرونة الجلوس، مع حشو الأركان بنباتات ظل طويلة.",
+            lightingLayout: "توزيع إضاءة نجفة رئيسية بقوة سطوع دافئة مع ليد جداري جيبسون بورد مدمج سلس.",
+            materialsAndTexturalDetails: "أقمشة البوكليه الممزوجة بالكتان الطبيعي والأحجار الترافرتين غير اللامعة.",
+            furniturePlacementStepByStep: [
+              "تركيب الصوفا الرئيسية المواجهة للمدخل للوجاهة المعمارية.",
+              "توزيع المقاعد الجانبية مع ممرات حركة سلسة تبلغ 85 سم.",
+              "دمج قطع الإكسسوار النحاسية في قلب الطاولة الأساسية."
+            ],
+            pantoneColors: [
+              { colorName: "رملي كريمي", hex: "#DFD5C6", ratio: "60%", purpose: "طلاء خلفي ممتد للمجالس" },
+              { colorName: "خشب الجوز المعتق", hex: "#5C4033", ratio: "30%", purpose: "الأرضيات والمشربيات الجانبية" },
+              { colorName: "نحاسي ذهبي دافئ", hex: "#D4AF37", ratio: "10%", purpose: "لوحات جدارية وفوانيس مدمجة" }
+            ],
+            hotspots: [
+              { x: 50, y: 20, label: "نجفة دافئة 3000K", detail: "إضاءة محورية مع ليد مخفي بالسقف" },
+              { x: 35, y: 45, label: "مشربية وتجاليد", detail: "أنتيك ستوكو مع لمسات نحاسية" },
+              { x: 55, y: 68, label: "جلسة عربية معاصرة", detail: "أثاث خشب طبيعي مع كتان فاخر" }
+            ]
+          }
+        },
+        {
+          id: "showcase-kitchen",
+          title: "مطبخ نخبة زيتوني مع بار رخامي - شقة التجمع",
+          roomType: "kitchen",
+          style: "luxury",
+          beforeImage: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?q=80&w=1000&auto=format&fit=crop",
+          afterImage: "/src/assets/images/luxury_kitchen_1779476153240.png",
+          dimensions: { width: "3.2", length: "4.8", height: "2.8" },
+          date: "2026-05-22",
+          options: {
+            primaryColors: "modern-olive",
+            flooring: "porcelain-marble",
+            walls: "wood-cladding",
+            lighting: "magnetic-tracks",
+            decor: "brass-accents",
+            plants: "ficus-lyrata",
+            furnitureStyle: "leather-metal"
+          },
+          analysis: {
+            layoutAnalysis: "مطبخ طولي الشكل مفتوح بمقاس مدمج، يحتاج إلى تصميم ذكي لتوفير مساحة الجزيرة وكسر جمود الألوان.",
+            strengths: ["التهوية الطبيعية ممتازة ومطلة على الحديقة الجانبية.", "تمديدات سباكة هيدروليكية مجهزة بمواقعها."],
+            weaknesses: ["مساحة تداول سطح العمل قصيرة."],
+            lightingAndColor: "يمكن استخدام لون زيتوني غني مع كاونتر توب أبيض بنقشة عروق رمادية باهتة لإظهار الإشراق الطبيعي.",
+            decorAdvice: "ننصح بدمج الخزائن لتمتد نحو السقف بالكامل لاستغلال الحجم العمودي وتوفير مسارات حركة لا تقل عن 90 سم.",
+            palette: [
+              { name: "زيتوني غامق فاخر", hex: "#3E4A3D", use: "درف الخزائن السفلية والعلوية للمطبخ" },
+              { name: "رخام كلكتا ناصع", hex: "#F3F4F6", use: "الجزيرة المركزية والأسطح المقابلة" },
+              { name: "خشب البلوط الفاتح", hex: "#CDBB9E", use: "الأرفف المفتوحة وعواميد التجاليد" }
+            ]
+          },
+          advice: {
+            styleDefinition: "يرقى هذا النمط إلى توفير مستوى فخم من المعيشة اليومية بأسلوب يمزج الصناعي الأنيق بالخامات الطبيعية المصقولة.",
+            spatialPlanning: "يتم ترتيب الأجهزة الكهربائية في وحدة عمودية مدمجة للتخزين وتوفير الجزيرة للطهي وتناول الإفطار بوقت واحد.",
+            lightingLayout: "مسارات إنارة مغناطيسية مدمجة بالكامل لإضاءة قوية فوق أسطح الطهي والتحضير.",
+            materialsAndTexturalDetails: "رخام كلكتا طبيعي، خزائن بتشطيب سوبر مطفي مقاوم للتبصيم، وستيل مكحل ناعم.",
+            furniturePlacementStepByStep: [
+              "تثبيت جزيرة المطبخ الرخامية بالوسط بمسارات تهوية من الجانبين.",
+              "دمج الثلاجة والفرن في وحدات العمود المستوي في الحائط الخلفي.",
+              "تنسيق المقاعد المرتفعة على أطراف الجزيرة مع إضاءة ليد مخفية بالكامل."
+            ],
+            pantoneColors: [
+              { colorName: "زيتوني مطفي", hex: "#4a533c", ratio: "60%", purpose: "تشطيب الخزائن الأساسية" },
+              { colorName: "رخامي عروق رصاصي", hex: "#EDEDED", ratio: "30%", purpose: "الجزيرة وأسطح تحضير الطعام" },
+              { colorName: "نحاسي مصقول", hex: "#B89B72", ratio: "10%", purpose: "المقابض ووحدات الإضاءة المعلقة" }
+            ],
+            hotspots: [
+              { x: 48, y: 18, label: "مسارات مغناطيسية", detail: "إضاءة موجهة عالية الدقة لسطح العمل" },
+              { x: 30, y: 45, label: "وحدات خزائن زيتونية", detail: "تشطيب مطفي مقاوم للبصمات" },
+              { x: 55, y: 70, label: "جزيرة رخام كلكتا", detail: "سطح تحضير وإفطار مع كراسي بار جلدية" }
+            ]
+          }
+        }
+      ];
+      setProjects(showcases);
+      localStorage.setItem("interior_designer_projects", JSON.stringify(showcases));
+    }
+  }, []);
+
+  // Save projects to local storage
+  const saveProjectsToLocalStorage = (list: Project[]) => {
+    setProjects(list);
+    localStorage.setItem("interior_designer_projects", JSON.stringify(list));
+  };
+
+  // Helper translations for arabic title display
+  const getStyleLabel = (key: string): string => {
+    const found = STYLES.find((s) => s.key === key);
+    return found ? found.label.split(" (")[0] : key;
+  };
+
+  const getRoomLabel = (key: string): string => {
+    const found = ROOM_TYPES.find((r) => r.key === key);
+    return found ? found.label.split(" (")[0] : key;
+  };
+
+  // Launch Active Design Workspace with custom combinations using Gemini 3.8 Flash
+  const triggerAIDesign = async () => {
+    setIsGenerating(true);
+
+    const payload = {
+      roomType: getPresetLabel(ROOM_TYPES, roomType),
+      style: getPresetLabel(STYLES, style),
+      primaryColors: getPresetLabel(COLOR_THEMES, primaryColors),
+      flooring: getPresetLabel(FLOORINGS, flooring),
+      walls: getPresetLabel(WALLS_FINISHES, walls),
+      lighting: getPresetLabel(LIGHTINGS, lighting),
+      decor: getPresetLabel(DECORATIONS, decor),
+      plants: getPresetLabel(PLANTS, plants),
+      furnitureStyle: getPresetLabel(FURNITURE_STYLES, furnitureStyle),
+      dimensions,
+      customNotes: customNotes.trim()
+    };
+
+    try {
+      const [adviceRes, analysisRes] = await Promise.all([
+        fetch("/api/generate-design-advice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        }),
+        fetch("/api/analyze-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...payload,
+            image: selectedImage
+          })
+        })
+      ]);
+
+      const adviceResult = await adviceRes.json();
+      const analysisResult = await analysisRes.json();
+
+      setAdvice(adviceResult);
+      setAnalysis(analysisResult);
+
+      const finalMatchImage = getBestMatchingRender(roomType, style);
+      setBeforeImage(
+        selectedImage || "https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=1000&auto=format&fit=crop"
+      );
+      setAfterImage(finalMatchImage);
+      setAutoArrangeTrigger((prev) => prev + 1);
+      showToast("✨ تم توليد التصميم والتحليل المعماري بنجاح عبر Gemini 3.8!");
+    } catch (e) {
+      console.error("Failed to run AI interior design pipeline:", e);
+      showToast("⚠️ تعذر الاتصال المؤقت، تم عرض المعاينة البديلة.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Select project from portfolio cards
+  const selectProject = (p: Project) => {
+    setSelectedImage(p.beforeImage);
+    setDimensions(p.dimensions);
+    setRoomType(p.roomType);
+    setStyle(p.style);
+    setPrimaryColors(p.options.primaryColors);
+    setFlooring(p.options.flooring);
+    setWalls(p.options.walls);
+    setLighting(p.options.lighting);
+    setDecor(p.options.decor);
+    setPlants(p.options.plants);
+    setFurnitureStyle(p.options.furnitureStyle);
+    setCustomNotes(p.options.customNotes || "");
+
+    setBeforeImage(p.beforeImage || "https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=1000&auto=format&fit=crop");
+    setAfterImage(p.afterImage || getBestMatchingRender(p.roomType, p.style));
+    setAnalysis(p.analysis);
+    setAdvice(p.advice);
+    setActiveProjectTitle(p.title);
+
+    setActiveTab("workspace");
+  };
+
+  // Launch a clean empty workspace canvas
+  const createNewProject = () => {
+    setSelectedImage(null);
+    setDimensions({ width: "4", length: "5", height: "2.8" });
+    setRoomType("bedroom");
+    setStyle("modern");
+    setPrimaryColors("neutral-warm");
+    setFlooring("wood-parquet");
+    setWalls("matte-paint");
+    setLighting("magnetic-tracks");
+    setDecor("minimalist-art");
+    setPlants("ficus-lyrata");
+    setFurnitureStyle("minimal-boucle");
+    setCustomNotes("");
+
+    setBeforeImage(null);
+    setAfterImage(null);
+    setAnalysis(null);
+    setAdvice(null);
+    setActiveProjectTitle("");
+
+    setActiveTab("workspace");
+  };
+
+  // Delete project from collection
+  const deleteProject = (id: string) => {
+    const list = projects.filter((p) => p.id !== id);
+    saveProjectsToLocalStorage(list);
+    showToast("🗑️ تم حذف المشروع من لوحة التحكم.");
+  };
+
+  // Open Save Modal
+  const handleSaveActiveProject = () => {
+    const defaultTitle =
+      activeProjectTitle || `تصميم ${getRoomLabel(roomType)} بأسلوب ${getStyleLabel(style)}`;
+    setSaveTitleInput(defaultTitle);
+    setIsSaveModalOpen(true);
+  };
+
+  const confirmSaveProject = () => {
+    const finalTitle =
+      saveTitleInput.trim() || `تصميم ${getRoomLabel(roomType)} - ${new Date().toLocaleDateString("ar")}`;
+
+    const newPrj: Project = {
+      id: Date.now().toString(),
+      title: finalTitle,
+      roomType,
+      style,
+      beforeImage: beforeImage || selectedImage,
+      afterImage: afterImage,
+      dimensions,
+      date: new Date().toISOString().split("T")[0],
+      analysis,
+      advice,
+      options: {
+        primaryColors,
+        flooring,
+        walls,
+        lighting,
+        decor,
+        plants,
+        furnitureStyle,
+        customNotes
+      }
+    };
+
+    const filtered = projects.filter((p) => p.id !== "new-draft");
+    const updatedList = [newPrj, ...filtered];
+    saveProjectsToLocalStorage(updatedList);
+    setActiveProjectTitle(finalTitle);
+    setIsSaveModalOpen(false);
+    showToast("🎉 تم حفظ التصميم بنجاح داخل لوحة تحكم مشاريعك!");
+    setActiveTab("dashboard");
+  };
+
+  const handleExportHighRes = () => {
+    if (!afterImage) return;
+    const anchor = document.createElement("a");
+    anchor.href = afterImage;
+    anchor.download = `AI-Interior-Design-${roomType}-${style}.png`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    showToast("📥 جاري تحميل صورة التصميم بجودة عالية...");
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col justify-between" dir="rtl">
+      {/* HEADER BAR AND BRANDING NAVBAR */}
+      <header className="sticky top-0 z-30 w-full glass-effect border-b border-[#2D2D2D]/10 py-4 px-6 md:px-12 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#5A5A40] rounded-xl flex items-center justify-center shadow-md">
+            <span className="text-xl text-white">📐</span>
+          </div>
+          <div className="flex flex-col text-right">
+            <span className="text-md font-black tracking-tight text-[#2D2D2D] font-sans">
+              مصمم الديكور الذكي <span className="text-[#5A5A40] font-mono">VISION AI</span>
+            </span>
+            <span className="text-[10px] text-gray-400 font-semibold">إعادة تصور وتنسيق الفراغات بالذكاء الاصطناعي</span>
+          </div>
+        </div>
+
+        {/* NAVIGATION ROUTING DECK */}
+        <div className="flex items-center gap-1.5 bg-[#2D2D2D]/5 p-1 rounded-2xl border border-[#2D2D2D]/5">
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={`py-2 px-4 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer ${
+              activeTab === "dashboard"
+                ? "bg-[#5A5A40] text-white shadow-sm"
+                : "text-[#2D2D2D]/70 hover:text-[#2D2D2D] hover:bg-[#2D2D2D]/5"
+            }`}
+          >
+            📋 لوحة التحكم والمشاريع
+          </button>
+          <button
+            onClick={() => setActiveTab("workspace")}
+            className={`py-2 px-4 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer ${
+              activeTab === "workspace"
+                ? "bg-[#5A5A40] text-white shadow-sm"
+                : "text-[#2D2D2D]/70 hover:text-[#2D2D2D] hover:bg-[#2D2D2D]/5"
+            }`}
+          >
+            ✏️ استوديو التصميم الذكي
+          </button>
+        </div>
+      </header>
+
+      {/* CORE FRAME FOR VIEW RENDERINGS */}
+      <main className="grow max-w-7xl w-full mx-auto px-4 md:px-8 py-8">
+        {activeTab === "dashboard" ? (
+          <Dashboard
+            projects={projects}
+            onSelectProject={selectProject}
+            onDeleteProject={deleteProject}
+            onCreateNew={createNewProject}
+          />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in pr-1">
+            {/* COLUMN 1 - DESIGN WORKBENCH LEFT PANEL (SPAN 5) */}
+            <div className="lg:col-span-5 flex flex-col gap-6">
+              {/* Back to dashboard trigger */}
+              <button
+                onClick={() => setActiveTab("dashboard")}
+                className="text-xs hover:text-[#5A5A40] font-bold text-gray-500 self-start cursor-pointer transition-colors"
+              >
+                ← العودة للوحة التحكم والمشاريع
+              </button>
+
+              <div className="bg-white rounded-[2rem] p-6 border border-[#2D2D2D]/10 flex flex-col gap-6 shadow-sm">
+                {/* Image upload & raw entries */}
+                <ImageUploader
+                  onImageSelected={setSelectedImage}
+                  onDimensionsChanged={setDimensions}
+                  dimensions={dimensions}
+                  selectedImage={selectedImage}
+                />
+
+                <hr className="border-stone-100" />
+
+                {/* Preset selectors visual options */}
+                <CustomizerPanel
+                  roomType={roomType}
+                  setRoomType={setRoomType}
+                  style={style}
+                  setStyle={setStyle}
+                  primaryColors={primaryColors}
+                  setPrimaryColors={setPrimaryColors}
+                  flooring={flooring}
+                  setFlooring={setFlooring}
+                  walls={walls}
+                  setWalls={setWalls}
+                  lighting={lighting}
+                  setLighting={setLighting}
+                  decor={decor}
+                  setDecor={setDecor}
+                  plants={plants}
+                  setPlants={setPlants}
+                  furnitureStyle={furnitureStyle}
+                  setFurnitureStyle={setFurnitureStyle}
+                  onAutoArrange={() => setAutoArrangeTrigger((prev) => prev + 1)}
+                />
+
+                {/* Custom architectural prompt / notes */}
+                <div className="flex flex-col gap-2 bg-[#FAF9F5] p-4 rounded-2xl border border-[#2D2D2D]/10">
+                  <label className="text-xs font-bold text-[#2D2D2D] flex items-center gap-1.5">
+                    <span>📝 ملاحظات وطلبات خاصة للمصمم الذكي (اختياري):</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={customNotes}
+                    onChange={(e) => setCustomNotes(e.target.value)}
+                    placeholder="مثال: أريد إضافة مكتبة تلفزيون خشبية مع ركن قهوة صغير وإضاءة دافئة للقراءة..."
+                    className="w-full bg-white border border-[#2D2D2D]/10 rounded-xl p-2.5 text-xs text-[#2D2D2D] placeholder:text-gray-400 focus:border-[#5A5A40] focus:outline-hidden resize-none"
+                  />
+                </div>
+
+                {/* Main transform AI button */}
+                <button
+                  type="button"
+                  onClick={triggerAIDesign}
+                  disabled={isGenerating}
+                  className="bg-[#5A5A40] hover:bg-[#2D2D2D] text-white font-extrabold py-4 px-6 rounded-2xl w-full cursor-pointer shadow-lg shadow-[#5A5A40]/10 hover:shadow-none transition-all duration-300 flex items-center justify-center gap-2"
+                >
+                  {isGenerating ? (
+                    <>
+                      <span className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+                      <span>جاري المعالجة المعمارية عبر Gemini 3.8...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>✨ تحويل وتصميم الفراغ بالتوليد الذكي</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* COLUMN 2 - INTERACTIVE CANVAS & REALTIME ADVICE PANEL (SPAN 7) */}
+            <div className="lg:col-span-7 flex flex-col gap-8">
+              {/* Interactive Visual compare canvas */}
+              <div className="bg-white rounded-[2rem] p-6 border border-[#2D2D2D]/10 shadow-sm flex flex-col gap-6">
+                <VisualizerCanvas
+                  beforeImage={beforeImage}
+                  afterImage={afterImage}
+                  onExport={handleExportHighRes}
+                  isGenerating={isGenerating}
+                  primaryColors={primaryColors}
+                  lighting={lighting}
+                  hotspots={advice?.hotspots}
+                />
+
+                {/* Save design to dashboard projects */}
+                {afterImage && (
+                  <button
+                    type="button"
+                    onClick={handleSaveActiveProject}
+                    className="bg-[#2D2D2D] hover:bg-[#5A5A40] text-white font-bold py-2.5 px-6 rounded-2xl text-xs cursor-pointer shadow-sm self-end transition-all duration-300 flex items-center gap-2"
+                  >
+                    <span>💾 حفظ هذا الفراغ بالمشاريع</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Interactive 3D spatial sketch */}
+              <div className="bg-white rounded-[2rem] p-6 border border-[#2D2D2D]/10 shadow-sm flex flex-col gap-4">
+                <div className="flex items-center gap-2 border-b border-[#2D2D2D]/10 pb-3">
+                  <span className="w-2.5 h-6 bg-[#A67B5B] rounded-full"></span>
+                  <div className="flex flex-col">
+                    <h3 className="text-sm font-bold text-[#2D2D2D]">📍 محاكاة وترتيب الأثاث ثلاثية الأبعاد (3D Room Planner)</h3>
+                    <span className="text-xs text-gray-400">انظّم وجرّب ترتيب وتدوير الصالون، والسرير والطاولات بالتناغم مع أبعادك يدويًا</span>
+                  </div>
+                </div>
+                <ThreeDSpacePlanner
+                  roomType={roomType}
+                  dimensions={dimensions}
+                  style={style}
+                  autoArrangeTrigger={autoArrangeTrigger}
+                />
+              </div>
+
+              {/* Smart analysis recommendations dockets */}
+              <SmartSuggestionsPanel
+                analysis={analysis}
+                advice={advice}
+                roomType={roomType}
+                style={style}
+                dimensions={dimensions}
+              />
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* TOAST NOTIFICATION */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-6 z-50 bg-[#2D2D2D] text-white text-xs font-bold px-5 py-3 rounded-2xl shadow-xl border border-white/10 animate-fade-in">
+          {toastMessage}
+        </div>
+      )}
+
+      {/* SAVE PROJECT MODAL */}
+      {isSaveModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] p-6 max-w-md w-full border border-[#2D2D2D]/10 shadow-2xl flex flex-col gap-4">
+            <h3 className="text-base font-bold text-[#2D2D2D]">💾 حفظ مشروع التصميم</h3>
+            <p className="text-xs text-gray-500">أدخل اسماً مميزاً لمشروع التصميم الخاص بك للرجوع إليه لاحقاً في لوحة التحكم:</p>
+            <input
+              type="text"
+              value={saveTitleInput}
+              onChange={(e) => setSaveTitleInput(e.target.value)}
+              className="w-full bg-[#FAF9F5] border border-[#2D2D2D]/15 rounded-xl px-4 py-2.5 text-sm text-[#2D2D2D] focus:border-[#5A5A40] focus:outline-hidden"
+              placeholder="اسم المشروع..."
+            />
+            <div className="flex items-center justify-end gap-2 mt-2">
+              <button
+                type="button"
+                onClick={() => setIsSaveModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={confirmSaveProject}
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-[#5A5A40] hover:bg-[#2D2D2D] text-white cursor-pointer transition-colors"
+              >
+                تأكيد الحفظ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FOOTER METADATA BAR */}
+      <footer className="w-full bg-stone-900 border-t border-stone-800 py-6 px-8 text-center text-stone-500 font-sans flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-2 text-stone-400">
+          <span>📐</span>
+          <span className="text-xs font-bold">استوديو التصميم الداخلي الافتراضي ومحاكي الفراغات التوليدي الذكي | 2026</span>
+        </div>
+
+        <div className="flex items-center gap-4 text-xs">
+          <span>مدعوم بنموذج Gemini 3.8 مجاناً</span>
+          <span>•</span>
+          <span>مطور بالكامل للغة العربية RTL</span>
+          <span>•</span>
+          <span className="font-mono text-[10px]">v2.0.0</span>
+        </div>
+      </footer>
+    </div>
+  );
+}

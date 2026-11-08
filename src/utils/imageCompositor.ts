@@ -1,9 +1,12 @@
 import {
   UserDesignSelections,
   SmartRoomAnalysis,
+  DetailedDesignAdvice,
+  RoomDimensionsInput,
 } from '../types/makan';
 import {
   WALL_COLORS,
+  WALL_FINISHES,
   FLOORING_OPTIONS,
   DESIGN_STYLES,
   ROOM_TYPES,
@@ -962,12 +965,107 @@ export async function composePhotometricDesign(
   };
 }
 
+export function buildTailoredDesignAdvice(
+  selections: UserDesignSelections,
+  dimensions?: Partial<RoomDimensionsInput>
+): DetailedDesignAdvice {
+  const roomObj = ROOM_TYPES.find((r) => r.id === selections.roomType) || ROOM_TYPES[0];
+  const styleObj = DESIGN_STYLES.find((s) => s.id === selections.styleId) || DESIGN_STYLES[0];
+  const wallColorObj =
+    WALL_COLORS.find((w) => w.id === selections.wallColorId) ||
+    WALL_COLORS.find((w) => w.id === styleObj.recommendedWallColorId) ||
+    WALL_COLORS[0];
+  const wallFinishObj =
+    WALL_FINISHES.find((f) => f.id === selections.wallFinishId) || WALL_FINISHES[0];
+  const floorObj =
+    FLOORING_OPTIONS.find((f) => f.id === selections.flooringId) ||
+    FLOORING_OPTIONS.find((f) => f.id === styleObj.recommendedFloorId) ||
+    FLOORING_OPTIONS[0];
+
+  const widthM = dimensions?.widthM || roomObj.defaultDimensions.width || 4;
+  const lengthM = dimensions?.lengthM || roomObj.defaultDimensions.length || 5;
+  const heightM = dimensions?.heightM || roomObj.defaultDimensions.height || 2.8;
+  const areaM2 = (widthM * lengthM).toFixed(1);
+
+  const wallHex = selections.selectedWallShadeHex || wallColorObj.hex;
+  const decorLabel = selections.decorStyleAr || 'لوحات جدارية وإكسسوارات متناسقة';
+  const plantsLabel = selections.plantsStyleAr || 'نباتات ظل داخلية طبيعية';
+  const furnStyleLabel = selections.furnitureMaterialStyleAr || 'أثاث عصري مريح';
+  const customNoteSuffix = selections.customNotesAr?.trim()
+    ? ` تم مراعاة طلبك الخاص: «${selections.customNotesAr.trim()}».`
+    : '';
+
+  return {
+    styleDefinition: `يمثل التصميم بأسلوب (${styleObj.nameAr}) داخل (${roomObj.nameAr}) توليفة معمارية متكاملة تجمع بين الجمال الوظيفي والراحة البصرية، مع توظيف دهان (${wallColorObj.nameAr}) لإبراز فخامة الخامات والحفاظ التام على الأبواب والشبابيك.${customNoteSuffix}`,
+    spatialPlanning: `بناءً على أبعاد الفراغ (${widthM}م عرض × ${lengthM}م طول × ${heightM}م ارتفاع) بمساحة إجمالية ${areaM2} م²، يتم توزيع الكتل الرئيسية على الحائط الأطول (${lengthM}م) للحفاظ على ممر حركة انسيابي بعرض 85-90 سم أمام الفتحات والأبواب، واستغلال الارتفاع (${heightM}م) عبر تشطيبات متوازنة تزيد من رحابة المكان.`,
+    lightingLayout: `اعتماد إضاءة (${selections.lightingTemp}) عبر 3 طبقات ضوئية: إضاءة عامة محيطية متجانسة بالسقف، إضاءة سبوتات غاطسة ضد التوهج، وإضاءة ديكورية موجهة تبرز ملمس (${wallFinishObj.nameAr}).`,
+    materialsAndTexturalDetails: `تناغم مدروس بين أرضيات (${floorObj.nameAr} — ${floorObj.colorNameAr}) وتشطيب حوائط (${wallFinishObj.nameAr}) بدرجة (${wallColorObj.nameAr}) مع (${furnStyleLabel}) ولمسات (${decorLabel})، مما يخلق تبايناً غنياً ومريحاً للعين.`,
+    furniturePlacementStepByStep: [
+      `تأسيس ومعجون ودهان الحائط الرئيسي بطول (${lengthM}م) بدرجة (${wallColorObj.nameAr}) وتطبيق (${wallFinishObj.nameAr}) مع الحفاظ على الفتحات المعمارية.`,
+      `تركيب أرضيات (${floorObj.nameAr}) مع وزرات أرضية متناسقة وضبط الميول ومناسيب الأبواب.`,
+      `تشطيب السقف بالجبس بورد وتوزيع البؤر الضوئية بدرجة حرارة (${selections.lightingTemp}) لإبراز العمق البصري.`,
+      `توزيع (${furnStyleLabel}) ودمج (${plantsLabel}) و(${decorLabel}) مع ترك ممرات حركة مريحة لا تقل عن 85 سم.`,
+    ],
+    pantoneColors: [
+      {
+        colorName: `${wallColorObj.nameAr} (الأساس المعماري)`,
+        hex: wallHex,
+        ratio: '60%',
+        purpose: 'الحوائط الرئيسية والأسقف لتعزيز الإشراق والاتساع البصري',
+      },
+      {
+        colorName: `${floorObj.colorNameAr} (${floorObj.typeAr})`,
+        hex: floorObj.primaryHex,
+        ratio: '30%',
+        purpose: `الأرضيات (${floorObj.nameAr}) والعناصر المكملة`,
+      },
+      {
+        colorName: 'لمسة التباين الديكورية',
+        hex: styleObj.paletteHex[2] || '#C6A355',
+        ratio: '10%',
+        purpose: `عناصر (${decorLabel}) والإضاءة والوزرات لإبراز فخامة التصميم`,
+      },
+    ],
+    hotspots: [
+      {
+        x: 50,
+        y: 16,
+        label: `منظومة السقف والإضاءة (${selections.lightingTemp})`,
+        detail: `جبس بورد أبيض ناعم مع سبوتات غاطسة دافئة (${selections.lightingTemp})`,
+      },
+      {
+        x: 42,
+        y: 52,
+        label: `تشطيب الحوائط (${wallColorObj.nameAr})`,
+        detail: `${wallFinishObj.nameAr} — كود اللون ${wallHex} مع الحفاظ على الفتحات`,
+      },
+      {
+        x: 68,
+        y: 62,
+        label: 'حماية الفتحات والأبواب 100%',
+        detail: 'ثبات تام لموضع وأبعاد الباب والشباك والبلكونة الأصلية',
+      },
+      {
+        x: 48,
+        y: 92,
+        label: `تشطيب الأرضيات (${floorObj.typeAr})`,
+        detail: `${floorObj.nameAr} (${floorObj.colorNameAr}) مع وزرة أرضية متناسقة`,
+      },
+    ],
+  };
+}
+
 export function buildLocalSmartAnalysis(
   selections: UserDesignSelections,
-  clarity: { width: number; height: number; brightness: number }
+  clarity: { width: number; height: number; brightness: number },
+  dimensions?: Partial<RoomDimensionsInput>
 ): SmartRoomAnalysis {
   const roomObj = ROOM_TYPES.find((r) => r.id === selections.roomType) || ROOM_TYPES[0];
+  const styleObj = DESIGN_STYLES.find((s) => s.id === selections.styleId) || DESIGN_STYLES[0];
+  const wallColorObj = WALL_COLORS.find((w) => w.id === selections.wallColorId) || WALL_COLORS[0];
+  const floorObj = FLOORING_OPTIONS.find((f) => f.id === selections.flooringId) || FLOORING_OPTIONS[0];
   const furnItems = FURNITURE_CATALOG.filter((f) => f.applicableRooms.includes(selections.roomType)).slice(0, 3);
+  const advice = buildTailoredDesignAdvice(selections, dimensions);
 
   return {
     analyzedAt: new Date().toLocaleTimeString('ar-EG'),
@@ -977,7 +1075,7 @@ export function buildLocalSmartAnalysis(
       finishConditionAr:
         clarity.brightness < 105
           ? 'مساحة تحتاج إلى تعزيز الإضاءة وتحديث تشطيب الحوائط والأرضيات'
-          : 'هيكل معماري واضح بفتحات أبواب وشبابيك محددة',
+          : 'هيكل معماري واضح بفتحات أبواب وشبابيك محددة جاهز للتشطيب',
       visibleFurnitureAr: furnItems.map((f) => f.nameAr),
       wallColorsAndStateAr: 'أسطح حوائط مستوية قابلة لتطبيق الدهانات أو التجاليد الديكورية',
       floorMaterialAndStateAr: 'مسطح أرضية جاهز لتطبيق البورسلين أو الرخام أو الباركيه',
@@ -986,15 +1084,55 @@ export function buildLocalSmartAnalysis(
     },
     estimatedInsights: {
       renovationPrioritiesAr: [
-        'تأسيس ومعجون ودهان الحوائط بدرجة جريج دافئ أو أوف وايت مع وزرة أرضية متناسقة',
-        'تركيب سقف جبس بورد مسطح مع سبوتات غاطسة ضد التوهج (3000K)',
-        'تركيب أرضيات رخام أو بورسلين بيج أو باركيه مع الحفاظ على مناسيب الأبواب',
+        `تأسيس ومعجون ودهان الحوائط بدرجة (${wallColorObj.nameAr}) مع وزرة أرضية متناسقة`,
+        `تركيب سقف جبس بورد مسطح مع سبوتات غاطسة ضد التوهج (${selections.lightingTemp})`,
+        `تركيب أرضيات (${floorObj.nameAr}) مع الحفاظ على مناسيب الأبواب`,
       ],
       recommendedStyleIds: ['neoclassic', 'minimal', 'modern'],
       colorHarmonyAdviceAr:
         'الدرجات الدافئة مثل الجريج الملكي والبيج الرملي تتناغم بشدة مع إضاءة 3000K وتمنح إحساساً باتساع المساحة مع ضوء البلكونة الطبيعي.',
       measurementDisclaimerAr:
         'تنبيه هندسي: البيانات المرئية أعلاه مستخلصة من الصورة، بينما المقاسات الفعلية بالمتر المربع تتطلب إدخال أبعاد الغرفة الحقيقية في حاسبة الكميات ولا يمكن الجزم بها من صورة عادية دون مرجع قياس موثوق.',
+      layoutAnalysisAr: `تحليل أبعاد الفراغ ونوعه (${roomObj.nameAr}) وفق طراز (${styleObj.nameAr}) يوضح إمكانيات عالية للاستفادة من تدفق الضوء الطبيعي وتوزيع التشطيبات بشكل يحقق التوازن البصري والاتساع الهندسي.`,
+      strengthsAr: [
+        `مرونة عالية في توظيف المسطحات الجدارية داخل (${roomObj.nameAr}) بما يتناغم مع طراز (${styleObj.nameAr}).`,
+        'دخول إضاءة طبيعية جيدة تساعد على إبراز لمعان الرخام/البورسلين وتدرجات الدهان.',
+        'وضوح الفتحات المعمارية وممرات الحركة بين الباب والبلكونة.',
+      ],
+      weaknessesAr: [
+        'الأسطح الحالية تحتاج إلى معالجة وتنعيم بالمعجون والدهان لكسر جمود اللون الرمادي.',
+        'توزيع مخارج الإضاءة العلوية يحتاج إلى سبوتات موزعة بانتظام لتفادي الظلال القوية.',
+      ],
+      decorAdviceAr:
+        'نوصي بوضع القطع الرئيسية بموازاة المحور الطولي للفراغ لتيسير التنقل، مع ترك مسافة لا تقل عن 85 سم للممرات أمام الباب والبلكونة.',
+      palette: [
+        {
+          name: wallColorObj.nameAr,
+          hex: selections.selectedWallShadeHex || wallColorObj.hex,
+          use: 'طلاء الحوائط الأساسية لتوسيع الفراغ',
+        },
+        {
+          name: 'أوف وايت سقفي ناعم',
+          hex: '#F6F4EF',
+          use: 'الجبس بورد والوزرات الأرضية',
+        },
+        {
+          name: floorObj.colorNameAr,
+          hex: floorObj.primaryHex,
+          use: `كسوة الأرضيات (${floorObj.nameAr})`,
+        },
+        {
+          name: 'تناغم ثانوي دافئ',
+          hex: floorObj.secondaryHex || '#DFD5C6',
+          use: 'الستائر والمنسوجات المكملة',
+        },
+        {
+          name: 'لكنة معمارية ذهبية',
+          hex: '#C6A355',
+          use: 'وحدات الإضاءة والتفاصيل الديكورية',
+        },
+      ],
     },
+    designAdvice: advice,
   };
 }

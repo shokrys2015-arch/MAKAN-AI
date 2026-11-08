@@ -9,6 +9,7 @@ import {
   MaskZoneId,
   QualityTier,
   FloorPlanFurnitureItem,
+  RoomDimensionsInput,
 } from '../types/makan';
 import {
   ROOM_TYPES,
@@ -29,6 +30,7 @@ import {
 import { analyzeImageClarity } from '../utils/imageCompositor';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { FloorPlan2D } from './FloorPlan2D';
+import { ArchitecturalPlanPanel } from './ArchitecturalPlanPanel';
 import {
   Upload,
   Sparkles,
@@ -46,7 +48,6 @@ import {
   Brush,
   RotateCcw,
   Star,
-  Building2,
 } from 'lucide-react';
 
 interface DesignStudioViewProps {
@@ -64,6 +65,7 @@ interface DesignStudioViewProps {
   onToggleFavoriteVersion: (versionId: string) => void;
   onDeleteVersion: (versionId: string) => void;
   onUpdateFloorPlanItems: (items: FloorPlanFurnitureItem[]) => void;
+  onUpdateDimensions: (dimensions: RoomDimensionsInput) => void;
   onOpenBOQForSelectedDesign: () => void;
 }
 
@@ -82,6 +84,7 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
   onToggleFavoriteVersion,
   onDeleteVersion,
   onUpdateFloorPlanItems,
+  onUpdateDimensions,
   onOpenBOQForSelectedDesign,
 }) => {
   const [studioStep, setStudioStep] = useState<1 | 2 | 3>(1);
@@ -636,6 +639,78 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
                   </button>
                 );
               })}
+            </div>
+
+            {/* Quick Optional Room Dimensions Bar (العرض × الطول × الارتفاع بالمتر) */}
+            <div className="mt-5 pt-4 border-t border-white/10 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+              <div>
+                <div className="text-xs font-bold text-[#C6A355]">
+                  أبعاد الغرفة بالمتر (اختياري للتخطيط وحساب المساحة):
+                </div>
+                <div className="text-[11px] text-[#A6A29A] mt-0.5">
+                  المساحة الحالية:{' '}
+                  <span className="font-mono font-bold text-[#F5F2EB]">
+                    {(activeRoom.dimensions.widthM * activeRoom.dimensions.lengthM).toFixed(1)} م²
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#A6A29A] mb-1">العرض (متر)</label>
+                <input
+                  type="number"
+                  min={2}
+                  max={25}
+                  step={0.1}
+                  value={activeRoom.dimensions.widthM}
+                  onChange={(e) =>
+                    onUpdateDimensions({
+                      ...activeRoom.dimensions,
+                      isMeasuredByUser: true,
+                      widthM: Math.max(2, parseFloat(e.target.value) || 4),
+                    })
+                  }
+                  className="w-full bg-[#0B0B0E] border border-white/15 rounded-lg px-3 py-2 text-xs font-mono text-[#F5F2EB] focus:border-[#C6A355] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#A6A29A] mb-1">الطول (متر)</label>
+                <input
+                  type="number"
+                  min={2}
+                  max={25}
+                  step={0.1}
+                  value={activeRoom.dimensions.lengthM}
+                  onChange={(e) =>
+                    onUpdateDimensions({
+                      ...activeRoom.dimensions,
+                      isMeasuredByUser: true,
+                      lengthM: Math.max(2, parseFloat(e.target.value) || 5),
+                    })
+                  }
+                  className="w-full bg-[#0B0B0E] border border-white/15 rounded-lg px-3 py-2 text-xs font-mono text-[#F5F2EB] focus:border-[#C6A355] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#A6A29A] mb-1">الارتفاع (متر)</label>
+                <input
+                  type="number"
+                  min={2.4}
+                  max={6}
+                  step={0.1}
+                  value={activeRoom.dimensions.heightM}
+                  onChange={(e) =>
+                    onUpdateDimensions({
+                      ...activeRoom.dimensions,
+                      isMeasuredByUser: true,
+                      heightM: Math.max(2.4, parseFloat(e.target.value) || 3),
+                    })
+                  }
+                  className="w-full bg-[#0B0B0E] border border-white/15 rounded-lg px-3 py-2 text-xs font-mono text-[#F5F2EB] focus:border-[#C6A355] outline-none"
+                />
+              </div>
             </div>
           </div>
 
@@ -1373,8 +1448,73 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
                     );
                   })}
                 </div>
+
+                {/* Additional Architectural Customizer Selectors (Decor, Plants, Furniture Material) */}
+                <div className="pt-4 border-t border-white/10 grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-[#C6A355] mb-1.5">
+                      العناصر الديكورية واللمسات الجدارية
+                    </label>
+                    <select
+                      value={sel.decorStyleAr || 'بانوهات كلاسيكية ناعمة وإطارات متناظرة'}
+                      onChange={(e) => updateSel({ decorStyleAr: e.target.value })}
+                      className="w-full bg-[#0B0B0E] border border-white/15 rounded-lg px-3 py-2 text-xs text-[#F5F2EB]"
+                    >
+                      <option value="بانوهات كلاسيكية ناعمة وإطارات متناظرة">بانوهات كلاسيكية ناعمة وإطارات متناظرة</option>
+                      <option value="لوحات فنية تجريدية ومرايا بإطار ذهبي">لوحات فنية تجريدية ومرايا بإطار ذهبي</option>
+                      <option value="تجاليد خشبية دافئة مع أرفف إضاءة مخفية">تجاليد خشبية دافئة مع أرفف إضاءة مخفية</option>
+                      <option value="إكسسوارات رخامية ومعدنية مينيمال">إكسسوارات رخامية ومعدنية مينيمال</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#C6A355] mb-1.5">
+                      النباتات الداخلية وتنسيق الزوايا
+                    </label>
+                    <select
+                      value={sel.plantsStyleAr || 'نباتات ظل داخلية في أصص سيراميك مطفي'}
+                      onChange={(e) => updateSel({ plantsStyleAr: e.target.value })}
+                      className="w-full bg-[#0B0B0E] border border-white/15 rounded-lg px-3 py-2 text-xs text-[#F5F2EB]"
+                    >
+                      <option value="نباتات ظل داخلية في أصص سيراميك مطفي">نباتات ظل داخلية في أصص سيراميك مطفي</option>
+                      <option value="أشجار زيتون وفيكس داخلية في الزوايا">أشجار زيتون وفيكس داخلية في الزوايا</option>
+                      <option value="نباتات مونستيرا ونخيل أريكا طبيعي">نباتات مونستيرا ونخيل أريكا طبيعي</option>
+                      <option value="بدون نباتات داخلية (تركيز معماري صافي)">بدون نباتات داخلية (تركيز معماري صافي)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#C6A355] mb-1.5">
+                      طراز وخامات الأثاث المفضلة
+                    </label>
+                    <select
+                      value={sel.furnitureMaterialStyleAr || 'أقمشة كتان وبوكليه ناعمة مع أخشاب دافئة'}
+                      onChange={(e) => updateSel({ furnitureMaterialStyleAr: e.target.value })}
+                      className="w-full bg-[#0B0B0E] border border-white/15 rounded-lg px-3 py-2 text-xs text-[#F5F2EB]"
+                    >
+                      <option value="أقمشة كتان وبوكليه ناعمة مع أخشاب دافئة">أقمشة كتان وبوكليه ناعمة مع أخشاب دافئة</option>
+                      <option value="قطيفة فاخرة مع لمسات نحاس ورخام طبيعي">قطيفة فاخرة مع لمسات نحاس ورخام طبيعي</option>
+                      <option value="جلد طبيعي وأخشاب جوز داكنة بطابع عصري">جلد طبيعي وأخشاب جوز داكنة بطابع عصري</option>
+                      <option value="أثاث مودرن منخفض الارتفاع بألوان محايدة">أثاث مودرن منخفض الارتفاع بألوان محايدة</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             )}
+
+            {/* Custom Notes Input (available across all catalog tabs) */}
+            <div className="pt-4 border-t border-white/10">
+              <label className="block text-xs font-bold text-[#C6A355] mb-1.5">
+                ملاحظات وطلبات خاصة للمصمم الذكي (اختياري)
+              </label>
+              <textarea
+                rows={2}
+                value={sel.customNotesAr || ''}
+                onChange={(e) => updateSel({ customNotesAr: e.target.value })}
+                placeholder="مثال: أريد التركيز على تفتيح الغرفة، أو إبراز الحائط الرئيسي خلف التلفزيون، مع الحفاظ التام على الأبواب والشبابيك..."
+                className="w-full bg-[#0B0B0E] border border-white/15 rounded-xl p-3 text-xs text-[#F5F2EB] placeholder:text-[#A6A29A]/60 focus:border-[#C6A355] outline-none resize-none"
+              />
+            </div>
           </div>
 
           {/* Left Column (5 cols): Live Interactive Before/After Preview & Actions */}
@@ -1394,6 +1534,7 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
                 afterUrl={activeVersion.resultDataUrl}
                 beforeLabelAr="قبل"
                 afterLabelAr="بعد التشطيب"
+                hotspots={activeVersion.hotspots || activeRoom.analysis?.designAdvice?.hotspots}
                 isFavorite={activeVersion.isFavorite}
                 onSaveToFavorites={() => onToggleFavoriteVersion(activeVersion.id)}
               />
@@ -1495,6 +1636,7 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
               afterLabelAr={`بعد (${activeVersion.labelAr})`}
               preservedElementsAr={activeVersion.preservedElementsAr}
               aiNotesAr={activeVersion.aiNotesAr}
+              hotspots={activeVersion.hotspots || activeRoom.analysis?.designAdvice?.hotspots}
               isFavorite={activeVersion.isFavorite}
               onSaveToFavorites={() => onToggleFavoriteVersion(activeVersion.id)}
               onRevertToOriginal={() => setStudioStep(2)}
@@ -1593,83 +1735,14 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
             </div>
           )}
 
-          {/* Smart Room AI Analysis Section (Section 19) */}
-          <div className="bg-[#141418] border border-white/10 rounded-xl p-5">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-              <div>
-                <h4 className="text-sm font-bold text-[#F5F2EB] flex items-center gap-2">
-                  <Eye className="w-4 h-4 text-[#C6A355]" />
-                  <span>التحليل الذكي للمكان (يفصل بين العناصر المرئية المؤكدة والتقديرات الاسترشادية)</span>
-                </h4>
-                <p className="text-xs text-[#A6A29A] mt-0.5">
-                  يحلل الذكاء الاصطناعي الصورة لتحديد العناصر المعمارية الظاهرة ومقترحات التجديد دون ادعاء معرفة المقاسات بالمتر من الصورة.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                disabled={isAnalyzing}
-                onClick={onRunSmartAnalysis}
-                className="px-4 py-2 bg-[#0B0B0E] hover:bg-white/5 text-[#C6A355] border border-[#C6A355]/40 rounded-lg text-xs font-bold whitespace-nowrap shrink-0"
-              >
-                {isAnalyzing ? 'جارٍ تحليل الصورة...' : 'تحديث التحليل الذكي للصورة'}
-              </button>
-            </div>
-
-            {activeRoom.analysis && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Confirmed Visible Info */}
-                <div className="bg-[#0B0B0E] border border-white/10 rounded-xl p-4 space-y-2.5 text-xs">
-                  <div className="text-[#C6A355] font-bold">
-                    1. معلومات مرئية مؤكدة من الصورة:
-                  </div>
-                  <div>
-                    <span className="text-[#A6A29A]">نوع المكان المحتمل: </span>
-                    <span className="text-[#F5F2EB] font-semibold">
-                      {activeRoom.analysis.confirmedVisible.probableRoomTypeAr}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[#A6A29A]">حالة التشطيب الظاهرة: </span>
-                    <span className="text-[#F5F2EB]">
-                      {activeRoom.analysis.confirmedVisible.finishConditionAr}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[#A6A29A]">الحوائط والأرضيات: </span>
-                    <span className="text-[#F5F2EB]">
-                      {activeRoom.analysis.confirmedVisible.wallColorsAndStateAr} ·{' '}
-                      {activeRoom.analysis.confirmedVisible.floorMaterialAndStateAr}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[#A6A29A]">العناصر المعمارية الثابتة: </span>
-                    <span className="text-[#F5F2EB]">
-                      {activeRoom.analysis.confirmedVisible.architecturalElementsAr.join(' · ')}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Estimated / Suggested Insights */}
-                <div className="bg-[#0B0B0E] border border-white/10 rounded-xl p-4 space-y-2.5 text-xs">
-                  <div className="text-amber-400 font-bold">
-                    2. تقديرات ومقترحات تجديد استرشادية:
-                  </div>
-                  <ul className="list-disc list-inside text-[#EAE4DA] space-y-1">
-                    {activeRoom.analysis.estimatedInsights.renovationPrioritiesAr.map((pr, idx) => (
-                      <li key={idx}>{pr}</li>
-                    ))}
-                  </ul>
-                  <div className="text-[#A6A29A] pt-1">
-                    {activeRoom.analysis.estimatedInsights.colorHarmonyAdviceAr}
-                  </div>
-                  <div className="p-2.5 rounded bg-amber-950/30 border border-amber-500/30 text-[11px] text-amber-200 mt-2">
-                    {activeRoom.analysis.estimatedInsights.measurementDisclaimerAr}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Executive Architectural Design Plan & 60-30-10 Pantone Balance & Smart Room Analysis */}
+          <ArchitecturalPlanPanel
+            analysis={activeRoom.analysis}
+            advice={activeVersion?.designAdvice || activeRoom.analysis?.designAdvice}
+            dimensions={activeRoom.dimensions}
+            isAnalyzing={isAnalyzing}
+            onRefreshAnalysis={onRunSmartAnalysis}
+          />
 
           {/* Interactive 2D Room Layout Toggle & Planner (Section 26) */}
           <div className="space-y-3">

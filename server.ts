@@ -186,6 +186,28 @@ app.post('/api/ai/analyze', async (req, res) => {
         },
         colorHarmonyAdviceAr: { type: Type.STRING },
         measurementDisclaimerAr: { type: Type.STRING },
+        layoutAnalysisAr: { type: Type.STRING },
+        strengthsAr: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+        },
+        weaknessesAr: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+        },
+        decorAdviceAr: { type: Type.STRING },
+        palette: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING },
+              hex: { type: Type.STRING },
+              use: { type: Type.STRING },
+            },
+            required: ['name', 'hex', 'use'],
+          },
+        },
       },
       required: [
         'probableRoomTypeAr',
@@ -199,6 +221,11 @@ app.post('/api/ai/analyze', async (req, res) => {
         'recommendedStyleIds',
         'colorHarmonyAdviceAr',
         'measurementDisclaimerAr',
+        'layoutAnalysisAr',
+        'strengthsAr',
+        'weaknessesAr',
+        'decorAdviceAr',
+        'palette',
       ],
     };
 
@@ -260,6 +287,11 @@ app.post('/api/ai/analyze', async (req, res) => {
           measurementDisclaimerAr:
             parsed.measurementDisclaimerAr ||
             'المعلومات أعلاه مبنية على التحليل البصري للصورة فقط. المقاسات الفعلية بالمتر المربع تتطلب قياساً ميدانياً ولا يمكن تأكيدها من صورة عادية دون مرجع قياس موثوق.',
+          layoutAnalysisAr: parsed.layoutAnalysisAr || '',
+          strengthsAr: parsed.strengthsAr || [],
+          weaknessesAr: parsed.weaknessesAr || [],
+          decorAdviceAr: parsed.decorAdviceAr || '',
+          palette: parsed.palette || [],
         },
       },
     });

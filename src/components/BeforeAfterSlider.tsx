@@ -10,7 +10,9 @@ import {
   Sliders,
   Sparkles,
   Check,
+  MapPin,
 } from 'lucide-react';
+import { ArchitecturalHotspot } from '../types/makan';
 
 interface BeforeAfterSliderProps {
   beforeUrl: string;
@@ -19,6 +21,7 @@ interface BeforeAfterSliderProps {
   afterLabelAr?: string;
   preservedElementsAr?: string[];
   aiNotesAr?: string;
+  hotspots?: ArchitecturalHotspot[];
   onRevertToOriginal?: () => void;
   onSaveToFavorites?: () => void;
   isFavorite?: boolean;
@@ -31,6 +34,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
   afterLabelAr = 'بعد (تصميم مكان AI)',
   preservedElementsAr = [],
   aiNotesAr,
+  hotspots = [],
   onRevertToOriginal,
   onSaveToFavorites,
   isFavorite = false,
@@ -39,6 +43,8 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
   const [viewMode, setViewMode] = useState<'slider' | 'sideBySide' | 'beforeOnly' | 'afterOnly'>('slider');
   const [zoom, setZoom] = useState<number>(1);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [showHotspots, setShowHotspots] = useState<boolean>(true);
+  const [activeHotspotIdx, setActiveHotspotIdx] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef<boolean>(false);
 
@@ -68,12 +74,12 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
       }`}
     >
       {/* Top Control Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 bg-[#141418] border border-white/10 rounded-xl p-2.5">
-        <div className="flex items-center gap-1 bg-[#0B0B0E] p-1 rounded-lg border border-white/5">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3 bg-[#141418] border border-white/10 rounded-xl p-2">
+        <div className="flex flex-wrap items-center gap-1 bg-[#0B0B0E] p-1 rounded-lg border border-white/5">
           <button
             type="button"
             onClick={() => setViewMode('slider')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+            className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
               viewMode === 'slider'
                 ? 'bg-[#C6A355] text-[#0B0B0E] font-semibold'
                 : 'text-[#A6A29A] hover:text-white'
@@ -85,7 +91,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
           <button
             type="button"
             onClick={() => setViewMode('sideBySide')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+            className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
               viewMode === 'sideBySide'
                 ? 'bg-[#C6A355] text-[#0B0B0E] font-semibold'
                 : 'text-[#A6A29A] hover:text-white'
@@ -97,7 +103,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
           <button
             type="button"
             onClick={() => setViewMode('afterOnly')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
+            className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
               viewMode === 'afterOnly'
                 ? 'bg-[#C6A355] text-[#0B0B0E] font-semibold'
                 : 'text-[#A6A29A] hover:text-white'
@@ -108,7 +114,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
           <button
             type="button"
             onClick={() => setViewMode('beforeOnly')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
+            className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
               viewMode === 'beforeOnly'
                 ? 'bg-[#C6A355] text-[#0B0B0E] font-semibold'
                 : 'text-[#A6A29A] hover:text-white'
@@ -118,7 +124,23 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {hotspots.length > 0 && viewMode !== 'beforeOnly' && (
+            <button
+              type="button"
+              onClick={() => setShowHotspots(!showHotspots)}
+              className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap shrink-0 flex items-center gap-1 ${
+                showHotspots
+                  ? 'bg-[#C6A355]/20 border-[#C6A355] text-[#C6A355]'
+                  : 'bg-[#0B0B0E] border-white/10 text-[#A6A29A] hover:text-white'
+              }`}
+              title="إظهار أو إخفاء النقاط التفاعلية لتفاصيل التشطيب على الصورة"
+            >
+              <MapPin className="w-3.5 h-3.5" />
+              <span>نقاط التشطيب ({hotspots.length})</span>
+            </button>
+          )}
+
           <div className="flex items-center gap-1 bg-[#0B0B0E] px-2 py-1 rounded-lg border border-white/5">
             <button
               type="button"
@@ -126,9 +148,9 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
               className="p-1 text-[#A6A29A] hover:text-white transition-colors"
               title="تصغير"
             >
-              <ZoomOut className="w-4 h-4" />
+              <ZoomOut className="w-3.5 h-3.5" />
             </button>
-            <span className="text-xs font-mono tabular-nums text-[#F5F2EB] px-1.5">
+            <span className="text-[11px] font-mono tabular-nums text-[#F5F2EB] px-1">
               {Math.round(zoom * 100)}%
             </span>
             <button
@@ -137,7 +159,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
               className="p-1 text-[#A6A29A] hover:text-white transition-colors"
               title="تكبير"
             >
-              <ZoomIn className="w-4 h-4" />
+              <ZoomIn className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -145,31 +167,31 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
             <button
               type="button"
               onClick={onSaveToFavorites}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+              className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap shrink-0 flex items-center gap-1 ${
                 isFavorite
                   ? 'bg-[#C6A355]/20 border-[#C6A355] text-[#C6A355]'
                   : 'bg-[#0B0B0E] border-white/10 text-[#F5F2EB] hover:border-[#C6A355]/60'
               }`}
             >
               <Check className="w-3.5 h-3.5" />
-              <span>{isFavorite ? 'محفوظ في المفضلة' : 'حفظ النتيجة'}</span>
+              <span>{isFavorite ? 'مفضل' : 'حفظ'}</span>
             </button>
           )}
 
           <button
             type="button"
             onClick={handleDownload}
-            className="px-3 py-1.5 text-xs font-medium bg-[#0B0B0E] hover:bg-white/5 text-[#F5F2EB] border border-white/10 rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
+            className="px-2.5 py-1.5 text-xs font-medium bg-[#0B0B0E] hover:bg-white/5 text-[#F5F2EB] border border-white/10 rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1"
           >
             <Download className="w-3.5 h-3.5 text-[#C6A355]" />
-            <span>تحميل الصورة</span>
+            <span>تحميل</span>
           </button>
 
           {onRevertToOriginal && (
             <button
               type="button"
               onClick={onRevertToOriginal}
-              className="px-3 py-1.5 text-xs font-medium bg-[#0B0B0E] hover:bg-white/5 text-[#A6A29A] hover:text-white border border-white/10 rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
+              className="px-2.5 py-1.5 text-xs font-medium bg-[#0B0B0E] hover:bg-white/5 text-[#A6A29A] hover:text-white border border-white/10 rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1"
               title="العودة إلى الصورة الأصلية"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -180,7 +202,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
           <button
             type="button"
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-2 bg-[#0B0B0E] hover:bg-white/5 text-[#F5F2EB] border border-white/10 rounded-lg transition-colors"
+            className="p-1.5 bg-[#0B0B0E] hover:bg-white/5 text-[#F5F2EB] border border-white/10 rounded-lg transition-colors"
             title={isFullscreen ? 'إغلاق ملء الشاشة' : 'عرض ملء الشاشة'}
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -254,6 +276,45 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
               draggable={false}
             />
 
+            {/* Interactive Hotspots Layer on the AFTER portion */}
+            {showHotspots && viewMode !== 'beforeOnly' && hotspots.length > 0 && (
+              <div className="absolute inset-0 z-10 pointer-events-none">
+                {hotspots.map((hs, idx) => {
+                  // Only show hotspot if it is on the visible "After" side of the slider
+                  if (viewMode === 'slider' && hs.x > sliderPos - 2) return null;
+                  const isOpen = activeHotspotIdx === idx;
+                  return (
+                    <div
+                      key={idx}
+                      style={{ left: `${hs.x}%`, top: `${hs.y}%` }}
+                      className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveHotspotIdx(isOpen ? null : idx);
+                      }}
+                      onMouseEnter={() => setActiveHotspotIdx(idx)}
+                      onMouseLeave={() => setActiveHotspotIdx(null)}
+                    >
+                      <button
+                        type="button"
+                        className="w-6 h-6 rounded-full bg-[#C6A355] text-[#0B0B0E] font-bold text-[11px] flex items-center justify-center shadow-[0_0_12px_rgba(198,163,85,0.85)] border-2 border-[#0B0B0E] hover:scale-110 transition-transform"
+                      >
+                        {idx + 1}
+                      </button>
+                      {isOpen && (
+                        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-52 bg-[#0B0B0E]/95 border border-[#C6A355] rounded-xl p-2.5 shadow-2xl text-right z-30">
+                          <div className="text-[11px] font-bold text-[#C6A355]">{hs.label}</div>
+                          <div className="text-[10px] text-[#EAE4DA] mt-0.5 leading-relaxed">
+                            {hs.detail}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Clipped Overlay Layer: BEFORE (Original) when in slider mode */}
             {viewMode === 'slider' && (
               <div
@@ -273,7 +334,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
             {/* Vertical Divider Handle */}
             {viewMode === 'slider' && (
               <div
-                className="absolute top-0 bottom-0 w-0.5 bg-[#C6A355] shadow-[0_0_12px_rgba(0,0,0,0.9)] pointer-events-none"
+                className="absolute top-0 bottom-0 w-0.5 bg-[#C6A355] shadow-[0_0_12px_rgba(0,0,0,0.9)] pointer-events-none z-20"
                 style={{ left: `${sliderPos}%` }}
               >
                 <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-9 h-9 rounded-full bg-[#C6A355] text-[#0B0B0E] shadow-lg flex items-center justify-center font-bold text-xs border-2 border-[#0B0B0E]">
@@ -286,10 +347,10 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
           {/* Labels */}
           {viewMode === 'slider' && (
             <>
-              <div className="absolute bottom-3 right-3 bg-black/75 backdrop-blur-sm px-3 py-1 rounded text-xs text-white pointer-events-none">
+              <div className="absolute bottom-3 right-3 bg-black/75 backdrop-blur-sm px-3 py-1 rounded text-xs text-white pointer-events-none z-20">
                 {beforeLabelAr}
               </div>
-              <div className="absolute bottom-3 left-3 bg-[#C6A355] text-[#0B0B0E] font-semibold px-3 py-1 rounded text-xs pointer-events-none">
+              <div className="absolute bottom-3 left-3 bg-[#C6A355] text-[#0B0B0E] font-semibold px-3 py-1 rounded text-xs pointer-events-none z-20">
                 {afterLabelAr}
               </div>
             </>
