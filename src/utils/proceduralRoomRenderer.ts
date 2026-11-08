@@ -48,7 +48,8 @@ const ROOM_TYPE_DEFAULT_IMAGE_MAP: Partial<Record<RoomTypeId, string>> = {
   kids_room: '/images/room_bedroom_luxury.jpg',
   kitchen: '/images/room_kitchen_modern.jpg',
   bathroom: '/images/room_bathroom_luxury.jpg',
-  office: '/images/room_office_exec.jpg',
+  home_office: '/images/room_office_exec.jpg',
+  admin_office: '/images/room_office_exec.jpg',
 };
 
 export function renderProceduralRoomToDataUrl(params: ProceduralRoomSceneParams): string {

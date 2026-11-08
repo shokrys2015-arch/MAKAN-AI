@@ -114,24 +114,41 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    Array.from(files).forEach((file, idx) => {
-      if (!file.type.startsWith('image/')) return;
+    const imageFiles = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
+
+    const loadedPhotos: UploadedPhoto[] = [];
+    let processedCount = 0;
+
+    imageFiles.forEach((file, idx) => {
       const reader = new FileReader();
       reader.onload = (ev) => {
         const dataUrl = ev.target?.result as string;
-        if (!dataUrl) return;
+        if (!dataUrl) {
+          processedCount++;
+          return;
+        }
         const img = new Image();
         img.onload = () => {
           const clarity = analyzeImageClarity(img);
-          const newPhoto: UploadedPhoto = {
+          loadedPhotos[idx] = {
             id: `photo_${Date.now()}_${idx}`,
             name: file.name,
             dataUrl,
-            angleLabelAr: activeRoom.photos.length === 0 && idx === 0 ? 'الزاوية الرئيسية' : `زاوية إضافية ${activeRoom.photos.length + idx + 1}`,
-            isPrimary: activeRoom.photos.length === 0 && idx === 0,
+            angleLabelAr: idx === 0 ? 'الصورة الأساسية المرفوعة' : `زاوية إضافية ${idx + 1}`,
+            isPrimary: idx === 0,
             clarityCheck: clarity,
           };
-          onUpdatePhotos([...activeRoom.photos, newPhoto]);
+          processedCount++;
+          if (processedCount === imageFiles.length) {
+            const validUploaded = loadedPhotos.filter(Boolean);
+            if (validUploaded.length > 0) {
+              const previousNonPrimary = activeRoom.photos
+                .filter((p) => !p.id.startsWith('ph_init_'))
+                .map((p) => ({ ...p, isPrimary: false }));
+              onUpdatePhotos([...validUploaded, ...previousNonPrimary]);
+            }
+          }
         };
         img.src = dataUrl;
       };
@@ -143,8 +160,8 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
   const handleLoadSampleRoom = (sampleId: string) => {
     const sample = SAMPLE_STARTING_ROOMS.find((s) => s.id === sampleId) || SAMPLE_STARTING_ROOMS[0];
     const dataUrl = renderProceduralRoomToDataUrl({
-      width: 960,
-      height: 580,
+      width: 1280,
+      height: 800,
       state: sample.state,
       roomType: sample.roomType,
     });
@@ -154,9 +171,11 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
       dataUrl,
       angleLabelAr: 'الزاوية الأساسية',
       isPrimary: true,
-      clarityCheck: { isClear: true, width: 960, height: 580, brightness: 135 },
+      clarityCheck: { isClear: true, width: 1280, height: 800, brightness: 135 },
     };
-    const others = activeRoom.photos.map((p) => ({ ...p, isPrimary: false }));
+    const others = activeRoom.photos
+      .filter((p) => !p.id.startsWith('ph_init_'))
+      .map((p) => ({ ...p, isPrimary: false }));
     onUpdatePhotos([newPhoto, ...others]);
   };
 
@@ -735,8 +754,8 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
       {/* ==================== STEP 2: VISUAL LIBRARIES & ELEMENT MASKING ==================== */}
       {studioStep === 2 && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Right Column (8 cols): Visual Catalog Tabs */}
-          <div className="lg:col-span-8 bg-[#141418] border border-white/10 rounded-xl p-5 space-y-5">
+          {/* Right Column (7 cols): Visual Catalog Tabs */}
+          <div className="lg:col-span-7 bg-[#141418] border border-white/10 rounded-xl p-5 space-y-5">
             {/* Catalog Category Tabs */}
             <div className="flex flex-wrap items-center gap-1.5 border-b border-white/10 pb-3">
               {(sel.designPath === 'element_mask' || sel.designPath === 'custom') && (
@@ -1358,40 +1377,43 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
             )}
           </div>
 
-          {/* Left Column (4 cols): Live Summary & Generate Actions */}
-          <div className="lg:col-span-4 bg-[#141418] border border-white/10 rounded-xl p-5 space-y-4 sticky top-20">
-            <h3 className="text-sm font-bold text-[#F5F2EB] border-b border-white/10 pb-3">
-              ملخص اختياراتك الحالية — {activeRoom.nameAr}
-            </h3>
+          {/* Left Column (5 cols): Live Interactive Before/After Preview & Actions */}
+          <div className="lg:col-span-5 bg-[#141418] border border-white/10 rounded-xl p-4 space-y-4 sticky top-20">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+              <h3 className="text-sm font-bold text-[#F5F2EB]">
+                المعاينة الفورية (قبل / بعد) — {activeRoom.nameAr}
+              </h3>
+              <span className="text-[11px] text-[#C6A355] font-semibold">
+                تحديث تلقائي مع كل اختيار
+              </span>
+            </div>
 
-            {primaryPhoto && (
-              <div className="relative rounded-lg overflow-hidden border border-white/10 bg-black">
-                <img
-                  src={primaryPhoto.dataUrl}
-                  alt="الصورة الأساسية"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-36 object-cover"
-                />
-                <div className="absolute bottom-2 right-2 bg-black/75 px-2 py-0.5 rounded text-[10px] text-white">
-                  الصورة الأصلية المرجعية
+            {activeVersion ? (
+              <BeforeAfterSlider
+                beforeUrl={activeVersion.originalDataUrl}
+                afterUrl={activeVersion.resultDataUrl}
+                beforeLabelAr="قبل"
+                afterLabelAr="بعد التشطيب"
+                isFavorite={activeVersion.isFavorite}
+                onSaveToFavorites={() => onToggleFavoriteVersion(activeVersion.id)}
+              />
+            ) : (
+              primaryPhoto && (
+                <div className="relative rounded-lg overflow-hidden border border-white/10 bg-black">
+                  <img
+                    src={primaryPhoto.dataUrl}
+                    alt="الصورة الأساسية"
+                    referrerPolicy="no-referrer"
+                    className="w-full h-56 object-cover"
+                  />
+                  <div className="absolute bottom-2 right-2 bg-black/75 px-2 py-0.5 rounded text-[10px] text-white">
+                    الصورة الأصلية المرجعية
+                  </div>
                 </div>
-              </div>
+              )
             )}
 
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between py-1 border-b border-white/5">
-                <span className="text-[#A6A29A]">مسار التصميم:</span>
-                <span className="font-bold text-[#C6A355]">
-                  {sel.designPath === 'quick'
-                    ? 'تصميم سريع'
-                    : sel.designPath === 'custom'
-                    ? 'تخصيص عناصر'
-                    : sel.designPath === 'element_mask'
-                    ? 'تعديل عنصر محدد (Mask)'
-                    : 'تصميم متكامل'}
-                </span>
-              </div>
-
+            <div className="space-y-1.5 text-xs bg-[#0B0B0E] border border-white/10 rounded-xl p-3">
               <div className="flex items-center justify-between py-1 border-b border-white/5">
                 <span className="text-[#A6A29A]">النمط المختار:</span>
                 <span className="font-semibold text-[#F5F2EB]">
@@ -1411,29 +1433,24 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
               </div>
 
               <div className="flex items-center justify-between py-1 border-b border-white/5">
-                <span className="text-[#A6A29A]">الأرضية:</span>
+                <span className="text-[#A6A29A]">الأرضية والإضاءة:</span>
                 <span className="font-semibold text-[#F5F2EB]">
-                  {FLOORING_OPTIONS.find((f) => f.id === sel.flooringId)?.nameAr}
+                  {FLOORING_OPTIONS.find((f) => f.id === sel.flooringId)?.nameAr} · {sel.lightingTemp}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between py-1 border-b border-white/5">
-                <span className="text-[#A6A29A]">الإضاءة:</span>
-                <span className="font-mono text-[#F5F2EB]">{sel.lightingTemp}</span>
-              </div>
-
-              <label className="flex items-center gap-2 pt-2 text-xs text-emerald-300 cursor-pointer">
+              <label className="flex items-center gap-2 pt-1.5 text-xs text-emerald-300 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={sel.preserveArchitecture}
                   onChange={(e) => updateSel({ preserveArchitecture: e.target.checked })}
                   className="w-4 h-4 accent-[#C6A355]"
                 />
-                <span>تثبيت مواضع الأبواب والشبابيك والأعمدة (موصى به)</span>
+                <span>تثبيت مواضع الأبواب والشبابيك والأعمدة 100%</span>
               </label>
             </div>
 
-            <div className="space-y-2.5 pt-2">
+            <div className="space-y-2">
               <button
                 type="button"
                 disabled={isGenerating}
@@ -1444,7 +1461,9 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
                 className="w-full py-3 px-4 bg-[#C6A355] hover:bg-[#d4b265] disabled:opacity-50 text-[#0B0B0E] font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg"
               >
                 <Sparkles className="w-4 h-4" />
-                <span>{isGenerating ? 'جارٍ معالجة وتوليد التصميم...' : 'اعرض التصميم الآن'}</span>
+                <span>
+                  {isGenerating ? 'جارٍ التنفيذ...' : 'عرض المقارنة بالحجم الكامل وحفظ النسخة'}
+                </span>
               </button>
 
               <button

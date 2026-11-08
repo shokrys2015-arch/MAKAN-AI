@@ -157,69 +157,83 @@ app.post('/api/ai/analyze', async (req, res) => {
 2. التقديرات والمقترحات غير المؤكدة (الأولويات المقترحة للتجديد، الأنماط المناسبة، نصائح تنسيق الألوان).
 تنبيه هام: لا تدّعِ معرفة المقاسات الهندسية الحقيقية بالمتر من الصورة لأنها تتطلب رفع مقاسات فعلي بالمتر في الموقع.`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType,
-              data: base64Data,
-            },
-          },
-          { text: promptText },
-        ],
-      },
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            probableRoomTypeAr: { type: Type.STRING },
-            finishConditionAr: { type: Type.STRING },
-            visibleFurnitureAr: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-            },
-            wallColorsAndStateAr: { type: Type.STRING },
-            floorMaterialAndStateAr: { type: Type.STRING },
-            visibleLightingAr: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-            },
-            architecturalElementsAr: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-            },
-            renovationPrioritiesAr: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-            },
-            recommendedStyleIds: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-            },
-            colorHarmonyAdviceAr: { type: Type.STRING },
-            measurementDisclaimerAr: { type: Type.STRING },
-          },
-          required: [
-            'probableRoomTypeAr',
-            'finishConditionAr',
-            'visibleFurnitureAr',
-            'wallColorsAndStateAr',
-            'floorMaterialAndStateAr',
-            'visibleLightingAr',
-            'architecturalElementsAr',
-            'renovationPrioritiesAr',
-            'recommendedStyleIds',
-            'colorHarmonyAdviceAr',
-            'measurementDisclaimerAr',
-          ],
+    const analysisSchema = {
+      type: Type.OBJECT,
+      properties: {
+        probableRoomTypeAr: { type: Type.STRING },
+        finishConditionAr: { type: Type.STRING },
+        visibleFurnitureAr: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
         },
+        wallColorsAndStateAr: { type: Type.STRING },
+        floorMaterialAndStateAr: { type: Type.STRING },
+        visibleLightingAr: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+        },
+        architecturalElementsAr: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+        },
+        renovationPrioritiesAr: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+        },
+        recommendedStyleIds: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+        },
+        colorHarmonyAdviceAr: { type: Type.STRING },
+        measurementDisclaimerAr: { type: Type.STRING },
       },
-    });
+      required: [
+        'probableRoomTypeAr',
+        'finishConditionAr',
+        'visibleFurnitureAr',
+        'wallColorsAndStateAr',
+        'floorMaterialAndStateAr',
+        'visibleLightingAr',
+        'architecturalElementsAr',
+        'renovationPrioritiesAr',
+        'recommendedStyleIds',
+        'colorHarmonyAdviceAr',
+        'measurementDisclaimerAr',
+      ],
+    };
 
-    const parsed = JSON.parse(response.text || '{}');
+    let responseText = '{}';
+    const visionModels = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
+    for (const modelName of visionModels) {
+      try {
+        const response = await ai.models.generateContent({
+          model: modelName,
+          contents: {
+            parts: [
+              {
+                inlineData: {
+                  mimeType,
+                  data: base64Data,
+                },
+              },
+              { text: promptText },
+            ],
+          },
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: analysisSchema,
+          },
+        });
+        if (response.text) {
+          responseText = response.text;
+          break;
+        }
+      } catch (_modelErr) {
+        // try next model in fallback list
+      }
+    }
+
+    const parsed = JSON.parse(responseText || '{}');
     res.json({
       aiPowered: true,
       analysis: {
@@ -258,7 +272,7 @@ app.post('/api/ai/analyze', async (req, res) => {
   }
 });
 
-// --- API: Design & Image Generation / Guidance ---
+// --- API: Design & Image Generation / Architectural Surface Guidance ---
 app.post('/api/ai/design', async (req, res) => {
   try {
     const {
@@ -266,6 +280,7 @@ app.post('/api/ai/design', async (req, res) => {
       promptDescriptionAr,
       preserveArchitecture,
       mode,
+      compiledDirective,
     } = req.body;
 
     const ai = getGenAIClient();
@@ -305,15 +320,25 @@ app.post('/api/ai/design', async (req, res) => {
       return;
     }
 
-    // Step 1: Try gemini-3.1-flash-lite-image if quota allows
+    const lockSection =
+      compiledDirective?.systemArchitecturalLockPrompt ||
+      `STRICT ARCHITECTURAL IMAGE-TO-IMAGE SURFACE EDITING:\n- Keep the exact camera angle, room perspective, and architectural geometry.\n- ${
+        preserveArchitecture
+          ? 'DO NOT move, remove, or alter any doors, windows, balconies, structural columns, or room boundaries.'
+          : 'Preserve main room proportions.'
+      }`;
+    const surfaceSection =
+      compiledDirective?.compiledSurfaceDirectiveEn || promptDescriptionAr || '';
+    const contextSectionAr =
+      compiledDirective?.compiledContextAr || promptDescriptionAr || '';
+
+    // Step 1: Try gemini-3.1-flash-lite-image if paid image quota is available
     try {
-      const imageEditPrompt = `You are MAKAN AI, an architectural interior design engine.
-Edit this interior room photo according to these exact user specifications:
-${promptDescriptionAr}
-CRITICAL RULES:
-- Keep the exact camera angle, room perspective, and architectural geometry.
-- ${preserveArchitecture ? 'DO NOT move, remove, or alter any doors, windows, structural columns, or room boundaries.' : 'Preserve main room proportions.'}
-- ${mode === 'element_mask' ? 'ONLY modify the explicitly specified element(s). Keep all other surfaces, furniture, walls, and flooring untouched.' : 'Ensure harmonious interior design matching the selected finishes.'}`;
+      const imageEditPrompt = `You are MAKAN AI, an architectural interior design engine.\n${lockSection}\n\nSURFACE EXECUTION DIRECTIVES:\n${surfaceSection}\n- ${
+        mode === 'element_mask'
+          ? 'ONLY modify the explicitly specified element(s). Keep all other surfaces, furniture, walls, and flooring 100% untouched.'
+          : 'Ensure harmonious photorealistic interior finishes while keeping all doors and windows untouched.'
+      }`;
 
       const imgResponse = await ai.models.generateContent({
         model: 'gemini-3.1-flash-lite-image',
@@ -344,37 +369,102 @@ CRITICAL RULES:
         }
       }
     } catch (_imgErr) {
-      // Expected when user is on free tier without paid image model quota; proceed to Gemini 3.8 Flash architectural guidance + client photometric engine
+      // Proceed to Free-Tier Gemini Vision (gemini-3.1-flash-lite) architectural segmentation + notes
     }
 
-    // Step 2: Use free-tier gemini-3.8-flash to provide tailored architectural & material notes for this exact photo + design
-    const textResponse = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType,
-              data: base64Data,
+    // Step 2: Use Free-Tier Gemini Vision (gemini-3.1-flash-lite / gemini-3.8-flash) to extract exact room surface boundaries & protected openings
+    const segSchema = {
+      type: Type.OBJECT,
+      properties: {
+        ceilingBottomY: {
+          type: Type.NUMBER,
+          description: 'Normalized Y (0.12 to 0.36) where the ceiling meets the main back wall',
+        },
+        floorTopY: {
+          type: Type.NUMBER,
+          description: 'Normalized Y (0.64 to 0.92) where the main back wall meets the floor',
+        },
+        isUnfinished: {
+          type: Type.BOOLEAN,
+          description: 'True if the room has unpainted gray plaster, red brick, or raw concrete surfaces',
+        },
+        protectedOpenings: {
+          type: Type.ARRAY,
+          description: 'Bounding boxes (normalized 0.0 to 1.0) of all doors, windows, balconies, and large furniture that must not be painted over',
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              label: { type: Type.STRING },
+              ymin: { type: Type.NUMBER },
+              xmin: { type: Type.NUMBER },
+              ymax: { type: Type.NUMBER },
+              xmax: { type: Type.NUMBER },
             },
+            required: ['label', 'ymin', 'xmin', 'ymax', 'xmax'],
           },
-          {
-            text: `أنت مهندس تصميم داخلي في منصة "مكان AI".
-المستخدم قام بتطبيق التعديلات التالية على هذه الغرفة:
-${promptDescriptionAr}
-اكتب ملاحظة هندسية موجزة ومفيدة (في جملتين فقط باللغة العربية) تشرح كيف تتناسق هذه الاختيارات (الألوان، الخامات، الإضاءة) مع إضاءة وهندسة هذه الغرفة في الصورة، مع تأكيد الحفاظ على العناصر المعمارية الثابتة.`,
-          },
-        ],
+        },
+        aiNotesAr: {
+          type: Type.STRING,
+          description: 'Two concise sentences in Arabic explaining how the selected finishes fit this room while preserving doors and windows',
+        },
       },
-    });
+      required: ['ceilingBottomY', 'floorTopY', 'isUnfinished', 'protectedOpenings', 'aiNotesAr'],
+    };
+
+    const segPrompt = `أنت محرك الرؤية المعمارية في منصة "مكان AI".
+الأوامر المجمعة لتشطيب هذه الغرفة:
+${contextSectionAr}
+
+المطلوب:
+1. حدد الإحداثيات النسبية (من 0.0 إلى 1.0) لخط التقاء السقف بالحائط الخلفي (ceilingBottomY) وخط التقاء الحائط الخلفي بالأرضية (floorTopY).
+2. حدد صناديق الإحاطة (protectedOpenings) لكل الأبواب والشبابيك والبلكونات والأثاث الرئيسي في الصورة بدقة حتى يحافظ عليها المحرك المعماري بنسبة 100% ولا يطمسها.
+3. اكتب ملاحظة هندسية موجزة (aiNotesAr) في جملتين باللغة العربية تشرح تناغم الألوان والخامات المختارة مع إضاءة وهندسة هذه الغرفة مع تأكيد الحفاظ على الأبواب والشبابيك.`;
+
+    let segResult: any = null;
+    for (const modelName of ['gemini-3.1-flash-lite', 'gemini-3.8-flash']) {
+      try {
+        const textResponse = await ai.models.generateContent({
+          model: modelName,
+          contents: {
+            parts: [
+              {
+                inlineData: {
+                  mimeType,
+                  data: base64Data,
+                },
+              },
+              { text: segPrompt },
+            ],
+          },
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: segSchema,
+          },
+        });
+        if (textResponse.text) {
+          segResult = JSON.parse(textResponse.text);
+          break;
+        }
+      } catch (_segErr) {
+        // try next fallback model
+      }
+    }
 
     res.json({
       aiImageGenerated: false,
+      roomSegmentation: segResult
+        ? {
+            ceilingBottomY: segResult.ceilingBottomY,
+            floorTopY: segResult.floorTopY,
+            isUnfinished: segResult.isUnfinished,
+            protectedOpenings: segResult.protectedOpenings || [],
+          }
+        : undefined,
       aiNotesAr:
-        textResponse.text?.trim() ||
+        segResult?.aiNotesAr ||
         'تم تطبيق الخامات والألوان المختارة بدقة مع الحفاظ على أبعاد المكان والأبواب والشبابيك.',
     });
-  } catch (err: any) {
+  } catch (_err: any) {
     res.status(200).json({
       aiImageGenerated: false,
       aiNotesAr:

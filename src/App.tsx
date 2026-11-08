@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   MakanProject,
   ApartmentRoomUnit,
@@ -23,7 +23,9 @@ import { renderProceduralRoomToDataUrl } from './utils/proceduralRoomRenderer';
 import {
   composePhotometricDesign,
   buildLocalSmartAnalysis,
+  RoomSegmentationGuide,
 } from './utils/imageCompositor';
+import { compileHiddenArchitecturalPrompt } from './utils/backgroundPromptCompiler';
 import { LandingHomeView } from './components/LandingHomeView';
 import { DesignStudioView } from './components/DesignStudioView';
 import { InspirationGalleryView } from './components/InspirationGalleryView';
@@ -32,7 +34,7 @@ import { ProjectsDashboardView } from './components/ProjectsDashboardView';
 
 type MainTab = 'home' | 'studio' | 'gallery' | 'boq' | 'projects';
 
-const STORAGE_PROJECTS_KEY = 'makan_ai_projects_v5';
+const STORAGE_PROJECTS_KEY = 'makan_ai_projects_v9';
 const STORAGE_PRICES_KEY = 'makan_ai_prices_v1';
 
 function createDefaultRoomUnit(
@@ -104,7 +106,7 @@ function createDefaultRoomUnit(
     },
     {
       id: `ver_mod_${id}`,
-      labelAr: 'مودرن دافئ — تجاليد بديل الخشب · باركيه أرو',
+      labelAr: 'مودرن دافئ — بيج رملي ناعم · إضاءة 3000K',
       createdAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
       sourcePhotoId: `ph_init_${id}`,
       originalDataUrl: beforeUrl,
@@ -114,12 +116,12 @@ function createDefaultRoomUnit(
         styleId: 'modern',
         wallColorId: 'wall_beige_sand',
         selectedWallShadeHex: '#DDD2C2',
-        wallFinishId: 'finish_wood_slats',
-        flooringId: 'floor_parquet_oak',
+        wallFinishId: 'finish_paint_matte',
+        flooringId: 'floor_marble_crema',
       },
       isFavorite: false,
       aiNotesAr:
-        'تصميم مودرن دافئ يجمع بين دهان البيج الرملي وتجاليد شرائح خشب الأرو الرأسية مع أرضية باركيه وإضاءة سبوتات 3000K.',
+        'تصميم مودرن دافئ يجمع بين دهان البيج الرملي الفائق النعومة مع إضاءة سبوتات غاطسة 3000K وأرضية رخام متناسقة.',
       preservedElementsAr: ['الحفاظ الكامل على الأبواب والشبابيك والفتحات', 'ثبات زاوية التصوير وأبعاد الغرفة'],
     },
   ];
@@ -254,6 +256,8 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const segmentationCacheRef = useRef<Record<string, RoomSegmentationGuide>>({});
+  const liveRequestCounterRef = useRef<number>(0);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -308,19 +312,165 @@ export default function App() {
     }));
   };
 
-  // Generate 1 design or 3 independent alternatives
-  const handleGenerateDesign = async (threeAlternatives = false) => {
+  // Silently compiles selection into a background architectural directive and updates the active preview immediately
+  const applyInstantBackgroundDirective = async (
+    nextSelections: UserDesignSelections,
+    photoOverride?: UploadedPhoto
+  ) => {
     const primaryPhoto =
-      activeRoom.photos.find((p) => p.isPrimary) || activeRoom.photos[0];
+      photoOverride ||
+      activeRoom.photos.find((p) => p.isPrimary) ||
+      activeRoom.photos[0];
+    if (!primaryPhoto) return;
+
+    const reqId = ++liveRequestCounterRef.current;
+    const styleObj = DESIGN_STYLES.find((s) => s.id === nextSelections.styleId) || DESIGN_STYLES[0];
+    const wallColorObj = WALL_COLORS.find((w) => w.id === nextSelections.wallColorId) || WALL_COLORS[0];
+    const floorObj = FLOORING_OPTIONS.find((f) => f.id === nextSelections.flooringId) || FLOORING_OPTIONS[0];
+    const modePrefix =
+      nextSelections.designPath === 'element_mask'
+        ? `تعديل موضعي (${nextSelections.activeMaskZones.join(' + ')})`
+        : styleObj.nameAr;
+    const nextLabelAr = `${modePrefix} — ${wallColorObj.nameAr} · ${floorObj.typeAr}`;
+
+    // 1. Silent background prompt compilation (invisible to user)
+    const compiledDirective = compileHiddenArchitecturalPrompt(nextSelections, activeRoom.analysis);
+
+    // 2. Instant local photometric execution (<150ms) so the image updates immediately on button click
+    const cachedSeg = segmentationCacheRef.current[primaryPhoto.id];
+    const fastComp = await composePhotometricDesign(
+      primaryPhoto.dataUrl,
+      nextSelections,
+      0,
+      cachedSeg
+    );
+    if (reqId !== liveRequestCounterRef.current) return;
+
+    const alignedBefore = fastComp.normalizedBeforeDataUrl || primaryPhoto.dataUrl;
+
+    updateActiveRoom((rm) => {
+      const currentVer =
+        rm.versions.find((v) => v.id === rm.selectedVersionId) || rm.versions[0];
+      if (currentVer && currentVer.sourcePhotoId === primaryPhoto.id) {
+        return {
+          ...rm,
+          selections: nextSelections,
+          versions: rm.versions.map((v) =>
+            v.id === currentVer.id
+              ? {
+                  ...v,
+                  labelAr: nextLabelAr,
+                  originalDataUrl: alignedBefore,
+                  resultDataUrl: fastComp.resultDataUrl,
+                  selections: { ...nextSelections },
+                  preservedElementsAr: fastComp.preservedElementsAr,
+                }
+              : v
+          ),
+        };
+      } else {
+        const autoVer: DesignVersion = {
+          id: `ver_live_${Date.now()}`,
+          labelAr: nextLabelAr,
+          createdAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+          sourcePhotoId: primaryPhoto.id,
+          originalDataUrl: alignedBefore,
+          resultDataUrl: fastComp.resultDataUrl,
+          selections: { ...nextSelections },
+          isFavorite: false,
+          aiNotesAr:
+            'تم تطبيق الاختيارات فوراً مع الحفاظ الكامل على الأبواب والشبابيك وهندسة الغرفة الأصلية.',
+          preservedElementsAr: fastComp.preservedElementsAr,
+        };
+        return {
+          ...rm,
+          selections: nextSelections,
+          versions: [autoVer, ...rm.versions],
+          selectedVersionId: autoVer.id,
+        };
+      }
+    });
+
+    // 3. Background Gemini Vision / Image execution if not yet cached or if AI image generation is available
+    try {
+      const res = await fetch('/api/ai/design', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageDataUrl: primaryPhoto.dataUrl,
+          promptDescriptionAr: compiledDirective.compiledContextAr,
+          preserveArchitecture: nextSelections.preserveArchitecture,
+          mode: nextSelections.designPath,
+          compiledDirective,
+        }),
+      });
+      if (!res.ok || reqId !== liveRequestCounterRef.current) return;
+      const data = await res.json();
+      if (data.roomSegmentation) {
+        segmentationCacheRef.current[primaryPhoto.id] = data.roomSegmentation;
+      }
+
+      if (data.aiImageGenerated && data.resultDataUrl) {
+        updateActiveRoom((rm) => ({
+          ...rm,
+          versions: rm.versions.map((v) =>
+            v.id === rm.selectedVersionId
+              ? {
+                  ...v,
+                  resultDataUrl: data.resultDataUrl,
+                  aiNotesAr: data.aiNotesAr || v.aiNotesAr,
+                }
+              : v
+          ),
+        }));
+      } else if (data.roomSegmentation && !cachedSeg) {
+        const refinedComp = await composePhotometricDesign(
+          primaryPhoto.dataUrl,
+          nextSelections,
+          0,
+          data.roomSegmentation
+        );
+        if (reqId !== liveRequestCounterRef.current) return;
+        updateActiveRoom((rm) => ({
+          ...rm,
+          versions: rm.versions.map((v) =>
+            v.id === rm.selectedVersionId
+              ? {
+                  ...v,
+                  resultDataUrl: refinedComp.resultDataUrl,
+                  aiNotesAr: data.aiNotesAr || v.aiNotesAr,
+                }
+              : v
+          ),
+        }));
+      }
+    } catch (_e) {
+      // Silent background fallback
+    }
+  };
+
+  // Generate 1 saved design version or 3 independent alternatives
+  const handleGenerateDesign = async (
+    threeAlternatives = false,
+    photoOverride?: UploadedPhoto,
+    selectionsOverride?: UserDesignSelections
+  ) => {
+    const primaryPhoto =
+      photoOverride ||
+      activeRoom.photos.find((p) => p.isPrimary) ||
+      activeRoom.photos[0];
     if (!primaryPhoto) return;
 
     setIsGenerating(true);
     try {
-      const sel = activeRoom.selections;
+      const sel = selectionsOverride || activeRoom.selections;
       const styleObj = DESIGN_STYLES.find((s) => s.id === sel.styleId) || DESIGN_STYLES[0];
       const wallColorObj = WALL_COLORS.find((w) => w.id === sel.wallColorId) || WALL_COLORS[0];
       const wallFinishObj = WALL_FINISHES.find((f) => f.id === sel.wallFinishId) || WALL_FINISHES[0];
       const floorObj = FLOORING_OPTIONS.find((f) => f.id === sel.flooringId) || FLOORING_OPTIONS[0];
+
+      // Compile hidden architectural directive silently in the background
+      const compiledDirective = compileHiddenArchitecturalPrompt(sel, activeRoom.analysis);
 
       const promptDescAr = `نمط التصميم: ${styleObj.nameAr} (${styleObj.nameEn})، لون الحوائط: ${wallColorObj.nameAr} (${sel.selectedWallShadeHex})، تشطيب الحوائط: ${wallFinishObj.nameAr}، الأرضية: ${floorObj.nameAr} (${floorObj.colorNameAr})، الإضاءة: ${sel.lightingTemp}، المسار: ${
         sel.designPath === 'element_mask'
@@ -328,9 +478,11 @@ export default function App() {
           : sel.designPath
       }.`;
 
-      // Call server-side Gemini endpoint for architectural notes / optional AI image
+      // Call server-side Gemini endpoint with hidden compiledDirective
       let serverAiNotes = '';
       let serverGeneratedImg: string | undefined;
+      let serverSegmentation: RoomSegmentationGuide | undefined =
+        segmentationCacheRef.current[primaryPhoto.id];
       try {
         const res = await fetch('/api/ai/design', {
           method: 'POST',
@@ -340,11 +492,16 @@ export default function App() {
             promptDescriptionAr: promptDescAr,
             preserveArchitecture: sel.preserveArchitecture,
             mode: sel.designPath,
+            compiledDirective,
           }),
         });
         if (res.ok) {
           const data = await res.json();
           serverAiNotes = data.aiNotesAr || '';
+          if (data.roomSegmentation) {
+            serverSegmentation = data.roomSegmentation;
+            segmentationCacheRef.current[primaryPhoto.id] = data.roomSegmentation;
+          }
           if (data.aiImageGenerated && data.resultDataUrl) {
             serverGeneratedImg = data.resultDataUrl;
           }
@@ -362,20 +519,22 @@ export default function App() {
             idx: 0,
           },
           {
-            labelAr: `بديل 2: تناغم دافئ — بديل الخشب وأرضية باركيه`,
+            labelAr: `بديل 2: تناغم دافئ — بيج رملي وأرضية باركيه أرو`,
             selections: {
               ...sel,
-              wallFinishId: 'finish_wood_slats',
+              wallColorId: 'wall_beige_sand',
+              selectedWallShadeHex: '#DDD2C2',
+              wallFinishId: 'finish_paint_matte',
               flooringId: 'floor_parquet_herringbone',
               lightingTemp: '2700K',
             },
             idx: 1,
           },
           {
-            labelAr: `بديل 3: فخامة هادئة — بديل الرخام وبورسلين بيج`,
+            labelAr: `بديل 3: نيو كلاسيك هادئ — بانوهات وبورسلين بيج`,
             selections: {
               ...sel,
-              wallFinishId: 'finish_marble_alt',
+              wallFinishId: 'finish_neoclassic_molding',
               flooringId: 'floor_porcelain_beige',
               lightingTemp: '3000K',
             },
@@ -385,13 +544,19 @@ export default function App() {
 
         const generatedVersions: DesignVersion[] = [];
         for (const cfg of altConfigs) {
-          const comp = await composePhotometricDesign(primaryPhoto.dataUrl, cfg.selections, cfg.idx);
+          const comp = await composePhotometricDesign(
+            primaryPhoto.dataUrl,
+            cfg.selections,
+            cfg.idx,
+            serverSegmentation
+          );
+          const alignedBefore = comp.normalizedBeforeDataUrl || primaryPhoto.dataUrl;
           generatedVersions.push({
             id: `ver_${Date.now()}_${cfg.idx}`,
             labelAr: cfg.labelAr,
             createdAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
             sourcePhotoId: primaryPhoto.id,
-            originalDataUrl: primaryPhoto.dataUrl,
+            originalDataUrl: alignedBefore,
             resultDataUrl: comp.resultDataUrl,
             selections: cfg.selections,
             isFavorite: false,
@@ -406,12 +571,21 @@ export default function App() {
 
         updateActiveRoom((rm) => ({
           ...rm,
-          versions: [...generatedVersions, ...rm.versions],
+          versions: [
+            ...generatedVersions,
+            ...rm.versions.filter((v) => v.sourcePhotoId === primaryPhoto.id),
+          ],
           selectedVersionId: generatedVersions[0].id,
         }));
         showToast('تم إنشاء وحفظ 3 بدائل تصميمية مستقلة للمكان بنجاح');
       } else {
-        const comp = await composePhotometricDesign(primaryPhoto.dataUrl, sel, 0);
+        const comp = await composePhotometricDesign(
+          primaryPhoto.dataUrl,
+          sel,
+          0,
+          serverSegmentation
+        );
+        const alignedBefore = comp.normalizedBeforeDataUrl || primaryPhoto.dataUrl;
         const modePrefix =
           sel.designPath === 'element_mask'
             ? `تعديل موضعي (${sel.activeMaskZones.join(' + ')})`
@@ -422,7 +596,7 @@ export default function App() {
           labelAr: `${modePrefix} — ${wallColorObj.nameAr} · ${floorObj.typeAr}`,
           createdAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
           sourcePhotoId: primaryPhoto.id,
-          originalDataUrl: primaryPhoto.dataUrl,
+          originalDataUrl: alignedBefore,
           resultDataUrl: serverGeneratedImg || comp.resultDataUrl,
           selections: { ...sel },
           isFavorite: false,
@@ -434,10 +608,16 @@ export default function App() {
 
         updateActiveRoom((rm) => ({
           ...rm,
-          versions: [newVer, ...rm.versions],
+          photos: rm.photos.map((p) =>
+            p.id === primaryPhoto.id ? { ...p, dataUrl: alignedBefore } : p
+          ),
+          versions: [
+            newVer,
+            ...rm.versions.filter((v) => v.sourcePhotoId === primaryPhoto.id),
+          ],
           selectedVersionId: newVer.id,
         }));
-        showToast('تم إنشاء التصميم وحفظه في سجل نسخ الغرفة');
+        showToast('تم تطبيق التشطيبات على صورتك مع الحفاظ على الأبواب والشبابيك');
       }
     } finally {
       setIsGenerating(false);
@@ -688,8 +868,8 @@ export default function App() {
             onStartStudioWithUpload={() => setActiveTab('studio')}
             onStartWithSampleState={(state) => {
               const newUrl = renderProceduralRoomToDataUrl({
-                width: 960,
-                height: 580,
+                width: 1280,
+                height: 800,
                 state,
                 roomType: activeRoom.selections.roomType,
               });
@@ -704,13 +884,19 @@ export default function App() {
                 dataUrl: newUrl,
                 angleLabelAr: 'الزاوية الأساسية',
                 isPrimary: true,
-                clarityCheck: { isClear: true, width: 960, height: 580, brightness: 130 },
+                clarityCheck: { isClear: true, width: 1280, height: 800, brightness: 130 },
               };
               updateActiveRoom((rm) => ({
                 ...rm,
-                photos: [samplePhoto, ...rm.photos.map((p) => ({ ...p, isPrimary: false }))],
+                photos: [
+                  samplePhoto,
+                  ...rm.photos
+                    .filter((p) => !p.id.startsWith('ph_init_'))
+                    .map((p) => ({ ...p, isPrimary: false })),
+                ],
               }));
               setActiveTab('studio');
+              handleGenerateDesign(false, samplePhoto);
             }}
             onStartWithStyle={(styleId: StyleId) => {
               const st = DESIGN_STYLES.find((s) => s.id === styleId) || DESIGN_STYLES[0];
@@ -763,10 +949,18 @@ export default function App() {
               showToast(`تمت إضافة «${nameAr}» إلى مشروع الشقة بنجاح`);
             }}
             onUpdatePhotos={(photos) => {
+              const prevPrimary =
+                activeRoom.photos.find((p) => p.isPrimary) || activeRoom.photos[0];
+              const nextPrimary =
+                photos.find((p) => p.isPrimary) || photos[0];
               updateActiveRoom((rm) => ({ ...rm, photos }));
+              if (nextPrimary && (!prevPrimary || nextPrimary.id !== prevPrimary.id)) {
+                handleGenerateDesign(false, nextPrimary);
+              }
             }}
             onUpdateSelections={(selections) => {
               updateActiveRoom((rm) => ({ ...rm, selections }));
+              applyInstantBackgroundDirective(selections);
             }}
             onGenerateDesign={handleGenerateDesign}
             onRunSmartAnalysis={handleRunSmartAnalysis}
