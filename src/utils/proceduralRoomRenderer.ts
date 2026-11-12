@@ -114,11 +114,19 @@ export interface SampleRoomPreset {
 export const SAMPLE_STARTING_ROOMS: SampleRoomPreset[] = [
   {
     id: 'sample_living',
-    nameAr: 'غرفة على المحارة (نصف تشطيب)',
+    nameAr: 'غرفة على المحارة (نصف تشطيب — فتحة الطرقة)',
     subtitleAr: 'شقة حقيقية على المحارة لتجربة الدهانات والبانوهات والرخام والباركيه مع ثبات الأبواب والبلكونة',
     roomType: 'living_room',
     state: 'semi_plaster',
     imageUrl: '/images/before_semi_plaster.jpg',
+  },
+  {
+    id: 'sample_plaster_balcony',
+    nameAr: 'شقة نصف تشطيب (فتحة البلكونة الجانبية)',
+    subtitleAr: 'غرفة على المحارة بفتحة بلكونة جانبية لتجربة تشطيب الأسقف والحوائط والرخام والباركيه',
+    roomType: 'living_room',
+    state: 'semi_plaster',
+    imageUrl: '/images/before_plaster_balcony.jpg',
   },
   {
     id: 'sample_unfinished',

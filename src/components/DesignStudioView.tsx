@@ -103,7 +103,12 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
   const sel = activeRoom.selections;
   const primaryPhoto =
     activeRoom.photos.find((p) => p.isPrimary) || activeRoom.photos[0] || null;
+  const matchingVersions = primaryPhoto
+    ? activeRoom.versions.filter((v) => v.sourcePhotoId === primaryPhoto.id)
+    : activeRoom.versions;
   const activeVersion =
+    matchingVersions.find((v) => v.id === activeRoom.selectedVersionId) ||
+    matchingVersions[0] ||
     activeRoom.versions.find((v) => v.id === activeRoom.selectedVersionId) ||
     activeRoom.versions[0] ||
     null;
@@ -146,10 +151,16 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
           if (processedCount === imageFiles.length) {
             const validUploaded = loadedPhotos.filter(Boolean);
             if (validUploaded.length > 0) {
-              const previousNonPrimary = activeRoom.photos
-                .filter((p) => !p.id.startsWith('ph_init_'))
+              const uploadedNames = new Set(validUploaded.map((u) => u.name));
+              const previousUserPhotos = activeRoom.photos
+                .filter(
+                  (p) =>
+                    !p.id.startsWith('ph_init_') &&
+                    !p.id.startsWith('sample_') &&
+                    !uploadedNames.has(p.name)
+                )
                 .map((p) => ({ ...p, isPrimary: false }));
-              onUpdatePhotos([...validUploaded, ...previousNonPrimary]);
+              onUpdatePhotos([...validUploaded, ...previousUserPhotos]);
             }
           }
         };
@@ -162,24 +173,18 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
 
   const handleLoadSampleRoom = (sampleId: string) => {
     const sample = SAMPLE_STARTING_ROOMS.find((s) => s.id === sampleId) || SAMPLE_STARTING_ROOMS[0];
-    const dataUrl = renderProceduralRoomToDataUrl({
-      width: 1280,
-      height: 800,
-      state: sample.state,
-      roomType: sample.roomType,
-    });
     const newPhoto: UploadedPhoto = {
-      id: `sample_${sample.id}_${Date.now()}`,
+      id: `sample_${sample.id}`,
       name: sample.nameAr,
-      dataUrl,
+      dataUrl: sample.imageUrl,
       angleLabelAr: 'الزاوية الأساسية',
       isPrimary: true,
       clarityCheck: { isClear: true, width: 1280, height: 800, brightness: 135 },
     };
-    const others = activeRoom.photos
-      .filter((p) => !p.id.startsWith('ph_init_'))
+    const userUploadedOthers = activeRoom.photos
+      .filter((p) => !p.id.startsWith('ph_init_') && !p.id.startsWith('sample_'))
       .map((p) => ({ ...p, isPrimary: false }));
-    onUpdatePhotos([newPhoto, ...others]);
+    onUpdatePhotos([newPhoto, ...userUploadedOthers]);
   };
 
   const handleSetPrimaryPhoto = (photoId: string) => {
@@ -487,17 +492,29 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
               <div className="lg:col-span-2 bg-[#0B0B0E] border border-white/10 rounded-xl p-3">
                 {primaryPhoto ? (
                   <div className="space-y-3">
-                    <div className="relative rounded-lg overflow-hidden bg-black">
-                      <img
-                        src={primaryPhoto.dataUrl}
-                        alt={primaryPhoto.name}
-                        referrerPolicy="no-referrer"
-                        className="w-full max-h-[340px] object-contain mx-auto"
+                    {activeVersion && activeVersion.sourcePhotoId === primaryPhoto.id ? (
+                      <BeforeAfterSlider
+                        beforeUrl={activeVersion.originalDataUrl}
+                        afterUrl={activeVersion.resultDataUrl}
+                        beforeLabelAr={`قبل: ${primaryPhoto.name}`}
+                        afterLabelAr={`بعد التشطيب (${activeVersion.labelAr})`}
+                        hotspots={activeVersion.hotspots || activeRoom.analysis?.designAdvice?.hotspots}
+                        isFavorite={activeVersion.isFavorite}
+                        onSaveToFavorites={() => onToggleFavoriteVersion(activeVersion.id)}
                       />
-                      <div className="absolute top-3 right-3 bg-black/75 backdrop-blur-sm px-3 py-1 rounded text-xs text-[#C6A355] font-semibold">
-                        الصورة الأساسية للتصميم: {primaryPhoto.name}
+                    ) : (
+                      <div className="relative rounded-lg overflow-hidden bg-black">
+                        <img
+                          src={primaryPhoto.dataUrl}
+                          alt={primaryPhoto.name}
+                          referrerPolicy="no-referrer"
+                          className="w-full max-h-[380px] object-contain mx-auto"
+                        />
+                        <div className="absolute top-3 right-3 bg-black/75 backdrop-blur-sm px-3 py-1 rounded text-xs text-[#C6A355] font-semibold">
+                          الصورة الأساسية للتصميم: {primaryPhoto.name}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Multi-angle thumbnails */}
                     <div className="flex flex-wrap items-center gap-2.5 pt-1">
@@ -566,25 +583,39 @@ export const DesignStudioView: React.FC<DesignStudioViewProps> = ({
                   </p>
 
                   <div className="space-y-2.5">
-                    {SAMPLE_STARTING_ROOMS.map((sample) => (
-                      <button
-                        key={sample.id}
-                        type="button"
-                        onClick={() => handleLoadSampleRoom(sample.id)}
-                        className="w-full text-right p-2.5 rounded-lg bg-[#141418] hover:bg-white/5 border border-white/10 hover:border-[#C6A355]/50 transition-colors flex items-center gap-3"
-                      >
-                        <img
-                          src={sample.imageUrl}
-                          alt={sample.nameAr}
-                          loading="lazy"
-                          className="w-16 h-12 object-cover rounded border border-white/10 shrink-0"
-                        />
-                        <div>
-                          <div className="text-xs font-bold text-[#F5F2EB]">{sample.nameAr}</div>
-                          <div className="text-[11px] text-[#A6A29A] mt-0.5 line-clamp-2">{sample.subtitleAr}</div>
-                        </div>
-                      </button>
-                    ))}
+                    {SAMPLE_STARTING_ROOMS.map((sample) => {
+                      const isSampleActive =
+                        primaryPhoto?.dataUrl === sample.imageUrl ||
+                        primaryPhoto?.id === `sample_${sample.id}`;
+                      return (
+                        <button
+                          key={sample.id}
+                          type="button"
+                          onClick={() => handleLoadSampleRoom(sample.id)}
+                          className={`w-full text-right p-2.5 rounded-lg border transition-colors flex items-center gap-3 ${
+                            isSampleActive
+                              ? 'bg-[#C6A355]/15 border-[#C6A355]'
+                              : 'bg-[#141418] hover:bg-white/5 border-white/10 hover:border-[#C6A355]/50'
+                          }`}
+                        >
+                          <img
+                            src={sample.imageUrl}
+                            alt={sample.nameAr}
+                            loading="lazy"
+                            className="w-16 h-12 object-cover rounded border border-white/10 shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <div className="text-xs font-bold text-[#F5F2EB] truncate">{sample.nameAr}</div>
+                              {isSampleActive && (
+                                <span className="text-[10px] font-bold text-[#C6A355] shrink-0">✓ مختارة</span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-[#A6A29A] mt-0.5 line-clamp-2">{sample.subtitleAr}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 

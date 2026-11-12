@@ -35,7 +35,7 @@ import { ProjectsDashboardView } from './components/ProjectsDashboardView';
 
 type MainTab = 'home' | 'studio' | 'gallery' | 'boq' | 'projects';
 
-const STORAGE_PROJECTS_KEY = 'makan_ai_projects_v10';
+const STORAGE_PROJECTS_KEY = 'makan_ai_projects_v13';
 const STORAGE_PRICES_KEY = 'makan_ai_prices_v1';
 
 function createDefaultRoomUnit(
@@ -494,6 +494,7 @@ export default function App() {
       activeRoom.photos[0];
     if (!primaryPhoto) return;
 
+    const reqId = ++liveRequestCounterRef.current;
     setIsGenerating(true);
     try {
       const sel = selectionsOverride || activeRoom.selections;
@@ -502,49 +503,15 @@ export default function App() {
       const wallFinishObj = WALL_FINISHES.find((f) => f.id === sel.wallFinishId) || WALL_FINISHES[0];
       const floorObj = FLOORING_OPTIONS.find((f) => f.id === sel.flooringId) || FLOORING_OPTIONS[0];
 
-      // Compile hidden architectural directive silently in the background
-      const compiledDirective = compileHiddenArchitecturalPrompt(sel, activeRoom.analysis);
-
-      const promptDescAr = `نمط التصميم: ${styleObj.nameAr} (${styleObj.nameEn})، لون الحوائط: ${wallColorObj.nameAr} (${sel.selectedWallShadeHex})، تشطيب الحوائط: ${wallFinishObj.nameAr}، الأرضية: ${floorObj.nameAr} (${floorObj.colorNameAr})، الإضاءة: ${sel.lightingTemp}، المسار: ${
-        sel.designPath === 'element_mask'
-          ? `تعديل موضعي للعناصر المحددة فقط (${sel.activeMaskZones.join(', ')})`
-          : sel.designPath
-      }.`;
-
-      // Call server-side Gemini endpoint with hidden compiledDirective
-      let serverAiNotes = '';
-      let serverGeneratedImg: string | undefined;
-      let serverSegmentation: RoomSegmentationGuide | undefined =
-        segmentationCacheRef.current[primaryPhoto.id];
-      try {
-        const res = await fetch('/api/ai/design', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            imageDataUrl: primaryPhoto.dataUrl,
-            promptDescriptionAr: promptDescAr,
-            preserveArchitecture: sel.preserveArchitecture,
-            mode: sel.designPath,
-            compiledDirective,
-          }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          serverAiNotes = data.aiNotesAr || '';
-          if (data.roomSegmentation) {
-            serverSegmentation = data.roomSegmentation;
-            segmentationCacheRef.current[primaryPhoto.id] = data.roomSegmentation;
-          }
-          if (data.aiImageGenerated && data.resultDataUrl) {
-            serverGeneratedImg = data.resultDataUrl;
-          }
-        }
-      } catch (_err) {
-        // Fallback to local photometric engine
-      }
+      // 1. Instant Photometric / 3D Master Execution (< 100ms) so UI updates immediately without waiting for network
+      const cachedSegmentation = segmentationCacheRef.current[primaryPhoto.id];
+      const updatedAnalysis = buildLocalSmartAnalysis(
+        sel,
+        primaryPhoto.clarityCheck,
+        activeRoom.dimensions
+      );
 
       if (threeAlternatives) {
-        // Generate 3 distinct independent design alternatives
         const altConfigs: { labelAr: string; selections: UserDesignSelections; idx: number }[] = [
           {
             labelAr: `بديل 1: ${styleObj.nameAr} — ${wallColorObj.nameAr} و${floorObj.typeAr}`,
@@ -555,20 +522,22 @@ export default function App() {
             labelAr: `بديل 2: تناغم دافئ — بيج رملي وأرضية باركيه أرو`,
             selections: {
               ...sel,
+              styleId: 'modern',
               wallColorId: 'wall_beige_sand',
               selectedWallShadeHex: '#DDD2C2',
               wallFinishId: 'finish_paint_matte',
               flooringId: 'floor_parquet_herringbone',
-              lightingTemp: '2700K',
+              lightingTemp: '3000K',
             },
             idx: 1,
           },
           {
-            labelAr: `بديل 3: نيو كلاسيك هادئ — بانوهات وبورسلين بيج`,
+            labelAr: `بديل 3: نيو كلاسيك هادئ — بانوهات ورخام كريما مارفيل`,
             selections: {
               ...sel,
+              styleId: 'neoclassic',
               wallFinishId: 'finish_neoclassic_molding',
-              flooringId: 'floor_porcelain_beige',
+              flooringId: 'floor_marble_crema',
               lightingTemp: '3000K',
             },
             idx: 2,
@@ -581,7 +550,7 @@ export default function App() {
             primaryPhoto.dataUrl,
             cfg.selections,
             cfg.idx,
-            serverSegmentation
+            cachedSegmentation
           );
           const alignedBefore = comp.normalizedBeforeDataUrl || primaryPhoto.dataUrl;
           const cfgAdvice = buildTailoredDesignAdvice(cfg.selections, activeRoom.dimensions);
@@ -596,20 +565,12 @@ export default function App() {
             isFavorite: false,
             isAlternative: true,
             alternativeIndex: cfg.idx + 1,
-            aiNotesAr:
-              serverAiNotes ||
-              `تم إنشاء ${cfg.labelAr} بشكل مستقل مع الحفاظ على الأبواب والشبابيك وأبعاد الغرفة.`,
+            aiNotesAr: `تم إنشاء ${cfg.labelAr} بشكل مستقل مع الحفاظ التام على الأبواب والشبابيك وأبعاد الغرفة.`,
             preservedElementsAr: comp.preservedElementsAr,
             hotspots: cfgAdvice.hotspots,
             designAdvice: cfgAdvice,
           });
         }
-
-        const updatedAnalysis = buildLocalSmartAnalysis(
-          sel,
-          primaryPhoto.clarityCheck,
-          activeRoom.dimensions
-        );
 
         updateActiveRoom((rm) => ({
           ...rm,
@@ -626,7 +587,7 @@ export default function App() {
           primaryPhoto.dataUrl,
           sel,
           0,
-          serverSegmentation
+          cachedSegmentation
         );
         const alignedBefore = comp.normalizedBeforeDataUrl || primaryPhoto.dataUrl;
         const modePrefix =
@@ -635,23 +596,17 @@ export default function App() {
             : styleObj.nameAr;
 
         const tailoredAdvice = buildTailoredDesignAdvice(sel, activeRoom.dimensions);
-        const updatedAnalysis = buildLocalSmartAnalysis(
-          sel,
-          primaryPhoto.clarityCheck,
-          activeRoom.dimensions
-        );
-
+        const newVerId = `ver_${Date.now()}`;
         const newVer: DesignVersion = {
-          id: `ver_${Date.now()}`,
+          id: newVerId,
           labelAr: `${modePrefix} — ${wallColorObj.nameAr} · ${floorObj.typeAr}`,
           createdAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
           sourcePhotoId: primaryPhoto.id,
           originalDataUrl: alignedBefore,
-          resultDataUrl: serverGeneratedImg || comp.resultDataUrl,
+          resultDataUrl: comp.resultDataUrl,
           selections: { ...sel },
           isFavorite: false,
           aiNotesAr:
-            serverAiNotes ||
             'تم تطبيق الاختيارات المرئية على المساحة مع الحفاظ الكامل على مواضع الأبواب والشبابيك وزاوية التصوير.',
           preservedElementsAr: comp.preservedElementsAr,
           hotspots: tailoredAdvice.hotspots,
@@ -671,6 +626,39 @@ export default function App() {
           selectedVersionId: newVer.id,
         }));
         showToast('تم تطبيق التشطيبات على صورتك مع الحفاظ على الأبواب والشبابيك');
+
+        // 2. Non-blocking background Gemini notes / segmentation refinement
+        const compiledDirective = compileHiddenArchitecturalPrompt(sel, updatedAnalysis);
+        const promptDescAr = `نمط التصميم: ${styleObj.nameAr} (${styleObj.nameEn})، لون الحوائط: ${wallColorObj.nameAr} (${sel.selectedWallShadeHex})، تشطيب الحوائط: ${wallFinishObj.nameAr}، الأرضية: ${floorObj.nameAr} (${floorObj.colorNameAr})، الإضاءة: ${sel.lightingTemp}.`;
+
+        fetch('/api/ai/design', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageDataUrl: primaryPhoto.dataUrl,
+            promptDescriptionAr: promptDescAr,
+            preserveArchitecture: sel.preserveArchitecture,
+            mode: sel.designPath,
+            compiledDirective,
+            isCustomPhoto: false,
+          }),
+        })
+          .then(async (res) => {
+            if (!res.ok || reqId !== liveRequestCounterRef.current) return;
+            const data = await res.json();
+            if (data.roomSegmentation) {
+              segmentationCacheRef.current[primaryPhoto.id] = data.roomSegmentation;
+            }
+            if (data.aiNotesAr) {
+              updateActiveRoom((rm) => ({
+                ...rm,
+                versions: rm.versions.map((v) =>
+                  v.id === newVerId ? { ...v, aiNotesAr: data.aiNotesAr } : v
+                ),
+              }));
+            }
+          })
+          .catch(() => {});
       }
     } finally {
       setIsGenerating(false);
@@ -1014,12 +1002,10 @@ export default function App() {
               showToast(`تمت إضافة «${nameAr}» إلى مشروع الشقة بنجاح`);
             }}
             onUpdatePhotos={(photos) => {
-              const prevPrimary =
-                activeRoom.photos.find((p) => p.isPrimary) || activeRoom.photos[0];
               const nextPrimary =
                 photos.find((p) => p.isPrimary) || photos[0];
               updateActiveRoom((rm) => ({ ...rm, photos }));
-              if (nextPrimary && (!prevPrimary || nextPrimary.id !== prevPrimary.id)) {
+              if (nextPrimary) {
                 handleGenerateDesign(false, nextPrimary);
               }
             }}

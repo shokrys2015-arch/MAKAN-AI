@@ -230,7 +230,7 @@ app.post('/api/ai/analyze', async (req, res) => {
     };
 
     let responseText = '{}';
-    const visionModels = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
+    const visionModels = ['gemini-3-flash-preview', 'gemini-2.5-flash'];
     for (const modelName of visionModels) {
       try {
         const response = await ai.models.generateContent({
@@ -313,6 +313,7 @@ app.post('/api/ai/design', async (req, res) => {
       preserveArchitecture,
       mode,
       compiledDirective,
+      isCustomPhoto,
     } = req.body;
 
     const ai = getGenAIClient();
@@ -364,44 +365,46 @@ app.post('/api/ai/design', async (req, res) => {
     const contextSectionAr =
       compiledDirective?.compiledContextAr || promptDescriptionAr || '';
 
-    // Step 1: Try gemini-3.1-flash-lite-image if paid image quota is available
-    try {
-      const imageEditPrompt = `You are MAKAN AI, an architectural interior design engine.\n${lockSection}\n\nSURFACE EXECUTION DIRECTIVES:\n${surfaceSection}\n- ${
-        mode === 'element_mask'
-          ? 'ONLY modify the explicitly specified element(s). Keep all other surfaces, furniture, walls, and flooring 100% untouched.'
-          : 'Ensure harmonious photorealistic interior finishes while keeping all doors and windows untouched.'
-      }`;
+    // Step 1: Try gemini-2.5-flash-image ONLY for custom user photos that don't have a verified 3D master
+    if (isCustomPhoto) {
+      try {
+        const imageEditPrompt = `You are MAKAN AI, an architectural interior design engine.\n${lockSection}\n\nSURFACE EXECUTION DIRECTIVES:\n${surfaceSection}\n- ${
+          mode === 'element_mask'
+            ? 'ONLY modify the explicitly specified element(s). Keep all other surfaces, furniture, walls, and flooring 100% untouched.'
+            : 'Ensure harmonious photorealistic interior finishes while keeping all doors and windows untouched.'
+        }`;
 
-      const imgResponse = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-image',
-        contents: {
-          parts: [
-            {
-              inlineData: {
-                mimeType,
-                data: base64Data,
+        const imgResponse = await ai.models.generateContent({
+          model: 'gemini-2.5-flash-image',
+          contents: {
+            parts: [
+              {
+                inlineData: {
+                  mimeType,
+                  data: base64Data,
+                },
               },
-            },
-            { text: imageEditPrompt },
-          ],
-        },
-      });
+              { text: imageEditPrompt },
+            ],
+          },
+        });
 
-      const parts = imgResponse.candidates?.[0]?.content?.parts || [];
-      for (const part of parts) {
-        if (part.inlineData?.data) {
-          const outMime = part.inlineData.mimeType || 'image/png';
-          res.json({
-            aiImageGenerated: true,
-            resultDataUrl: `data:${outMime};base64,${part.inlineData.data}`,
-            aiNotesAr:
-              'تم توليد التصميم بالذكاء الاصطناعي مع الحفاظ على الهيكل المعماري للمكان وفتحات الأبواب والشبابيك.',
-          });
-          return;
+        const parts = imgResponse.candidates?.[0]?.content?.parts || [];
+        for (const part of parts) {
+          if (part.inlineData?.data) {
+            const outMime = part.inlineData.mimeType || 'image/png';
+            res.json({
+              aiImageGenerated: true,
+              resultDataUrl: `data:${outMime};base64,${part.inlineData.data}`,
+              aiNotesAr:
+                'تم توليد التصميم بالذكاء الاصطناعي مع الحفاظ على الهيكل المعماري للمكان وفتحات الأبواب والشبابيك.',
+            });
+            return;
+          }
         }
+      } catch (_imgErr) {
+        // Proceed to Gemini Vision architectural segmentation + notes
       }
-    } catch (_imgErr) {
-      // Proceed to Free-Tier Gemini Vision (gemini-3.1-flash-lite) architectural segmentation + notes
     }
 
     // Step 2: Use Free-Tier Gemini Vision (gemini-3.1-flash-lite / gemini-3.8-flash) to extract exact room surface boundaries & protected openings
@@ -453,7 +456,7 @@ ${contextSectionAr}
 3. اكتب ملاحظة هندسية موجزة (aiNotesAr) في جملتين باللغة العربية تشرح تناغم الألوان والخامات المختارة مع إضاءة وهندسة هذه الغرفة مع تأكيد الحفاظ على الأبواب والشبابيك.`;
 
     let segResult: any = null;
-    for (const modelName of ['gemini-3.1-flash-lite', 'gemini-3.8-flash']) {
+    for (const modelName of ['gemini-3-flash-preview', 'gemini-2.5-flash']) {
       try {
         const textResponse = await ai.models.generateContent({
           model: modelName,
